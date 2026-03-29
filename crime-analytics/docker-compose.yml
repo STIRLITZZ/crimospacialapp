@@ -1,0 +1,121 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: crime-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: crime_db
+      POSTGRES_USER: crime_user
+      POSTGRES_PASSWORD: crime_pass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - crime-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crime_user -d crime_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  data-service:
+    build: ./services/data-service
+    container_name: data-service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://crime_user:crime_pass@db:5432/crime_db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - crime-net
+
+  analytics-service:
+    build: ./services/analytics-service
+    container_name: analytics-service
+    ports:
+      - "8002:8002"
+    environment:
+      DATA_SERVICE_URL: http://data-service:8001
+    depends_on:
+      - data-service
+    networks:
+      - crime-net
+
+  ml-service:
+    build: ./services/ml-service
+    container_name: ml-service
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./services/ml-service/models_store:/app/models_store
+    networks:
+      - crime-net
+
+  map-service:
+    build: ./services/map-service
+    container_name: map-service
+    ports:
+      - "8004:8004"
+    environment:
+      DATA_SERVICE_URL: http://data-service:8001
+    depends_on:
+      - data-service
+    networks:
+      - crime-net
+
+  etl-service:
+    build: ./services/etl-service
+    container_name: etl-service
+    ports:
+      - "8005:8005"
+    environment:
+      DATABASE_URL: postgresql://crime_user:crime_pass@db:5432/crime_db
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data/raw:/app/data/raw
+    networks:
+      - crime-net
+
+  gateway:
+    build: ./services/gateway
+    container_name: gateway
+    ports:
+      - "8000:8000"
+    environment:
+      DATA_SERVICE_URL: http://data-service:8001
+      ANALYTICS_SERVICE_URL: http://analytics-service:8002
+      ML_SERVICE_URL: http://ml-service:8003
+      MAP_SERVICE_URL: http://map-service:8004
+    depends_on:
+      - data-service
+      - analytics-service
+      - ml-service
+      - map-service
+      - etl-service
+    networks:
+      - crime-net
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+    depends_on:
+      - gateway
+    networks:
+      - crime-net
+
+volumes:
+  pgdata:
+
+networks:
+  crime-net:
+    driver: bridge
