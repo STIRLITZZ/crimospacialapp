@@ -66,8 +66,10 @@ services:
       - "8004:8004"
     environment:
       DATA_SERVICE_URL: http://data-service:8001
+      ANALYTICS_SERVICE_URL: http://analytics-service:8002
     depends_on:
       - data-service
+      - analytics-service
     networks:
       - crime-net
 
