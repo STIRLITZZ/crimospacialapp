@@ -50,6 +50,10 @@ services:
     container_name: ml-service
     ports:
       - "8003:8003"
+    environment:
+      DATA_SERVICE_URL: http://data-service:8001
+    depends_on:
+      - data-service
     volumes:
       - ./services/ml-service/models_store:/app/models_store
     networks:
