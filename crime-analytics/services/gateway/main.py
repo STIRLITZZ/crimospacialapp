@@ -1,73 +1,89 @@
-import os
+import logging
+import time
 
-import httpx
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
-app = FastAPI(title="Gateway Service", version="0.1.0")
+from routes.health import router as health_router
+from routes.data_routes import router as data_router
+from routes.analytics_routes import router as analytics_router
+from routes.ml_routes import router as ml_router
+from routes.map_routes import router as map_router
+from routes.etl_routes import router as etl_router
 
-SERVICE_URLS = {
-    "data": os.getenv("DATA_SERVICE_URL", "http://data-service:8001"),
-    "analytics": os.getenv("ANALYTICS_SERVICE_URL", "http://analytics-service:8002"),
-    "ml": os.getenv("ML_SERVICE_URL", "http://ml-service:8003"),
-    "map": os.getenv("MAP_SERVICE_URL", "http://map-service:8004"),
-    "etl": os.getenv("ETL_SERVICE_URL", "http://etl-service:8005"),
-}
+# ── Logging ─────────────────────────────────────────────
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger("gateway")
+
+# ── Rate limiter ────────────────────────────────────────
+
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+
+# ── App ─────────────────────────────────────────────────
+
+app = FastAPI(title="Crime Analytics Gateway", version="0.1.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ── CORS ────────────────────────────────────────────────
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-def _build_target_url(service_key: str, path: str, query: str) -> str:
-    base_url = SERVICE_URLS[service_key].rstrip("/")
-    suffix = f"/{path}" if path else ""
-    url = f"{base_url}/{service_key}{suffix}"
-    return f"{url}?{query}" if query else url
+# ── Logging middleware ──────────────────────────────────
 
-
-async def _proxy_request(service_key: str, path: str, request: Request) -> Response:
-    target_url = _build_target_url(service_key, path, request.url.query)
-    body = await request.body()
-    headers = {
-        key: value
-        for key, value in request.headers.items()
-        if key.lower() not in {"host", "content-length"}
-    }
-
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            upstream = await client.request(
-                method=request.method,
-                url=target_url,
-                content=body,
-                headers=headers,
-            )
-    except httpx.HTTPError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        response = await call_next(request)
+    except Exception:
+        logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=502,
+            content={"detail": "Upstream service unavailable"},
+        )
+    duration_ms = round((time.time() - start) * 1000, 1)
+    logger.info(
+        "%s %s -> %s (%.1f ms)",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    return response
 
-    response_headers = {
-        key: value
-        for key, value in upstream.headers.items()
-        if key.lower() not in {"content-encoding", "transfer-encoding", "connection"}
-    }
-    return Response(
-        content=upstream.content,
-        status_code=upstream.status_code,
-        headers=response_headers,
-        media_type=upstream.headers.get("content-type"),
+
+# ── Error handler for upstream failures ─────────────────
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unexpected error: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal gateway error"},
     )
 
 
-@app.get("/health")
-async def health():
-    return {
-        "status": "ok",
-        "services": list(SERVICE_URLS.keys()),
-    }
+# ── Routers ─────────────────────────────────────────────
 
-
-@app.api_route("/{service_key}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
-@app.api_route(
-    "/{service_key}/{path:path}",
-    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-)
-async def proxy(service_key: str, path: str = "", request: Request = None):
-    if service_key not in SERVICE_URLS:
-        raise HTTPException(status_code=404, detail=f"Unknown service '{service_key}'")
-    return await _proxy_request(service_key, path, request)
+app.include_router(health_router)
+app.include_router(data_router)
+app.include_router(analytics_router)
+app.include_router(ml_router)
+app.include_router(map_router)
+app.include_router(etl_router)

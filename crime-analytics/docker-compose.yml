@@ -96,6 +96,7 @@ services:
       ANALYTICS_SERVICE_URL: http://analytics-service:8002
       ML_SERVICE_URL: http://ml-service:8003
       MAP_SERVICE_URL: http://map-service:8004
+      ETL_SERVICE_URL: http://etl-service:8005
     depends_on:
       - data-service
       - analytics-service
