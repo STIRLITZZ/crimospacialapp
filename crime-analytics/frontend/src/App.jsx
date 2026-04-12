@@ -1,134 +1,170 @@
-const cards = [
-  {
-    title: "Data Service",
-    path: "/data/health",
-    description: "Validates the ingestion and query API.",
-  },
-  {
-    title: "Analytics Service",
-    path: "/analytics/health",
-    description: "Checks descriptive and spatial analytics endpoints.",
-  },
-  {
-    title: "ML Service",
-    path: "/ml/health",
-    description: "Verifies the prediction service is reachable.",
-  },
-  {
-    title: "Map Service",
-    path: "/map/health",
-    description: "Confirms map aggregation and geo endpoints.",
-  },
-  {
-    title: "Gateway",
-    path: "/health",
-    description: "Ensures the API gateway is online.",
-  },
+import { BrowserRouter, Routes, Route, NavLink } from "react-router-dom";
+import {
+  LayoutDashboard,
+  Map,
+  BarChart3,
+  BrainCircuit,
+} from "lucide-react";
+import { useFilters } from "./context/FilterContext";
+
+import Dashboard from "./pages/Dashboard";
+import MapPage from "./pages/MapPage";
+import Analytics from "./pages/Analytics";
+import Predict from "./pages/Predict";
+
+const NAV_ITEMS = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/map", label: "Map", icon: Map },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/predict", label: "Predict", icon: BrainCircuit },
 ];
 
-function App() {
-  const apiBaseUrl = import.meta.env.VITE_API_URL
-    || import.meta.env.REACT_APP_API_URL
-    || "http://localhost:8000";
+function Sidebar() {
+  const {
+    selectedArea,
+    setSelectedArea,
+    selectedCrimeType,
+    setSelectedCrimeType,
+    yearRange,
+    setYearRange,
+    areas,
+    crimeTypes,
+    dateRange,
+  } = useFilters();
 
   return (
-    <main style={styles.page}>
-      <section style={styles.hero}>
-        <p style={styles.eyebrow}>Crime Analytics Platform</p>
-        <h1 style={styles.title}>Frontend service is running.</h1>
-        <p style={styles.subtitle}>
-          This starter dashboard gives you quick health links into the backend
-          stack while the full UI is still being built.
-        </p>
-        <a href={`${apiBaseUrl}/health`} style={styles.primaryLink}>
-          Open gateway health check
-        </a>
-      </section>
+    <aside className="w-64 bg-dark-900 text-white flex flex-col h-screen fixed left-0 top-0">
+      {/* Logo */}
+      <div className="p-5 border-b border-white/10">
+        <h1 className="text-lg font-bold tracking-tight">
+          Crime Analytics
+        </h1>
+        <p className="text-xs text-gray-400 mt-1">Los Angeles Dashboard</p>
+      </div>
 
-      <section style={styles.grid}>
-        {cards.map((card) => (
-          <article key={card.path} style={styles.card}>
-            <h2 style={styles.cardTitle}>{card.title}</h2>
-            <p style={styles.cardDescription}>{card.description}</p>
-            <a href={`${apiBaseUrl}${card.path}`} style={styles.cardLink}>
-              {`${apiBaseUrl}${card.path}`}
-            </a>
-          </article>
+      {/* Navigation */}
+      <nav className="flex-1 py-4 px-3 space-y-1">
+        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/"}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                isActive
+                  ? "bg-primary-700 text-white"
+                  : "text-gray-300 hover:bg-white/5"
+              }`
+            }
+          >
+            <Icon size={18} />
+            {label}
+          </NavLink>
         ))}
-      </section>
-    </main>
+      </nav>
+
+      {/* Global Filters */}
+      <div className="p-4 border-t border-white/10 space-y-3">
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Filters
+        </p>
+
+        {/* Area */}
+        <select
+          value={selectedArea}
+          onChange={(e) => setSelectedArea(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-primary-500"
+        >
+          <option value="">All Areas</option>
+          {areas.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
+
+        {/* Crime Type */}
+        <select
+          value={selectedCrimeType}
+          onChange={(e) => setSelectedCrimeType(e.target.value)}
+          className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-primary-500"
+        >
+          <option value="">All Crime Types</option>
+          {crimeTypes.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+
+        {/* Year Range */}
+        <div className="flex gap-2">
+          <select
+            value={yearRange.from || ""}
+            onChange={(e) =>
+              setYearRange((prev) => ({
+                ...prev,
+                from: Number(e.target.value) || null,
+              }))
+            }
+            className="w-1/2 bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-sm text-gray-200 focus:outline-none"
+          >
+            <option value="">From</option>
+            {dateRange.min &&
+              dateRange.max &&
+              Array.from(
+                { length: dateRange.max - dateRange.min + 1 },
+                (_, i) => dateRange.min + i
+              ).map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+          </select>
+          <select
+            value={yearRange.to || ""}
+            onChange={(e) =>
+              setYearRange((prev) => ({
+                ...prev,
+                to: Number(e.target.value) || null,
+              }))
+            }
+            className="w-1/2 bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-sm text-gray-200 focus:outline-none"
+          >
+            <option value="">To</option>
+            {dateRange.min &&
+              dateRange.max &&
+              Array.from(
+                { length: dateRange.max - dateRange.min + 1 },
+                (_, i) => dateRange.min + i
+              ).map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+          </select>
+        </div>
+      </div>
+    </aside>
   );
 }
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    margin: 0,
-    padding: "48px 24px",
-    fontFamily: "Segoe UI, sans-serif",
-    color: "#f5f7fb",
-    background:
-      "radial-gradient(circle at top left, #224870 0%, #102033 45%, #09111d 100%)",
-  },
-  hero: {
-    maxWidth: "800px",
-    margin: "0 auto 32px auto",
-  },
-  eyebrow: {
-    textTransform: "uppercase",
-    letterSpacing: "0.2em",
-    fontSize: "0.75rem",
-    color: "#8ec5ff",
-    marginBottom: "12px",
-  },
-  title: {
-    fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
-    lineHeight: 1,
-    margin: "0 0 16px 0",
-  },
-  subtitle: {
-    maxWidth: "640px",
-    fontSize: "1.1rem",
-    lineHeight: 1.6,
-    color: "#d7e2f2",
-    marginBottom: "24px",
-  },
-  primaryLink: {
-    display: "inline-block",
-    padding: "14px 20px",
-    borderRadius: "999px",
-    backgroundColor: "#73e2a7",
-    color: "#102033",
-    textDecoration: "none",
-    fontWeight: 700,
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: "16px",
-    maxWidth: "1100px",
-    margin: "0 auto",
-  },
-  card: {
-    padding: "20px",
-    borderRadius: "20px",
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    border: "1px solid rgba(255, 255, 255, 0.12)",
-    backdropFilter: "blur(10px)",
-  },
-  cardTitle: {
-    marginTop: 0,
-    marginBottom: "8px",
-  },
-  cardDescription: {
-    color: "#d7e2f2",
-    lineHeight: 1.5,
-    minHeight: "48px",
-  },
-  cardLink: {
-    color: "#8ec5ff",
-    wordBreak: "break-word",
-  },
-};
+function App() {
+  return (
+    <BrowserRouter>
+      <div className="flex min-h-screen bg-dark-800">
+        <Sidebar />
+        <main className="ml-64 flex-1 p-6">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/predict" element={<Predict />} />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
+  );
+}
 
 export default App;
