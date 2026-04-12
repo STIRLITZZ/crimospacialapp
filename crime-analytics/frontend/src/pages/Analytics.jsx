@@ -1,101 +1,126 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useFilters } from "../context/FilterContext";
-import { fetchTimeSeries, fetchHourlyDistribution } from "../services/api";
+import {
+  fetchDashboard,
+  fetchTimeSeries,
+  fetchHourlyDistribution,
+  fetchStatsByArea,
+  fetchStatsByCrimeType,
+} from "../services/api";
+import TabNavigation from "../components/ui/TabNavigation";
+import TemporalCharts from "../components/analytics/TemporalCharts";
+import SpatialCharts from "../components/analytics/SpatialCharts";
+import CrimeTypeCharts from "../components/analytics/CrimeTypeCharts";
+import TrendCharts from "../components/analytics/TrendCharts";
+
+const TABS = [
+  { key: "temporal", label: "Temporal Analysis" },
+  { key: "spatial", label: "Spatial Analysis" },
+  { key: "crimes", label: "Crime Types" },
+  { key: "trends", label: "Trends" },
+];
 
 export default function Analytics() {
-  const { buildFilterParams } = useFilters();
-  const [timeSeries, setTimeSeries] = useState([]);
-  const [hourly, setHourly] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { buildFilterParams, areas } = useFilters();
+  const [activeTab, setActiveTab] = useState("temporal");
 
-  useEffect(() => {
-    const params = buildFilterParams();
+  const [monthlyData, setMonthlyData] = useState(null);
+  const [weekdayData, setWeekdayData] = useState(null);
+  const [hourlyData, setHourlyData] = useState(null);
+  const [areaStats, setAreaStats] = useState(null);
+  const [crimeTypes, setCrimeTypes] = useState(null);
+  const [riskScores, setRiskScores] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const params = buildFilterParams();
+
+  const loadData = useCallback(() => {
     setLoading(true);
+    setError(false);
+
     Promise.all([
-      fetchTimeSeries(params).catch(() => []),
+      fetchTimeSeries({ ...params, group_by: "month" }).catch(() => []),
+      fetchTimeSeries({ ...params, group_by: "weekday" }).catch(() => []),
       fetchHourlyDistribution(params).catch(() => []),
+      fetchStatsByArea(params).catch(() => []),
+      fetchStatsByCrimeType(params, 50).catch(() => []),
+      fetchDashboard(params).catch(() => null),
     ])
-      .then(([ts, hr]) => {
-        setTimeSeries(ts);
-        setHourly(hr);
+      .then(([monthly, weekday, hourly, areas, crimes, dashboard]) => {
+        setMonthlyData(monthly);
+        setWeekdayData(weekday);
+        setHourlyData(hourly);
+        setAreaStats(areas);
+        setCrimeTypes(crimes);
+        setRiskScores(dashboard?.risk_scores || []);
+
+        if (!monthly.length && !weekday.length && !hourly.length) {
+          setError(true);
+        }
       })
       .finally(() => setLoading(false));
-  }, [buildFilterParams]);
+  }, [params]);
 
-  if (loading) {
-    return (
-      <div className="text-gray-400 text-center mt-20">
-        Loading analytics...
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Analytics</h2>
-
-      {/* Time Series */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-        <h3 className="text-white font-semibold mb-4">
-          Monthly Crime Trend
-        </h3>
-        {timeSeries.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-gray-300">
-              <thead>
-                <tr className="text-left text-gray-500 border-b border-white/10">
-                  <th className="py-2 pr-4">Year</th>
-                  <th className="py-2 pr-4">Month</th>
-                  <th className="py-2">Count</th>
-                </tr>
-              </thead>
-              <tbody>
-                {timeSeries.slice(0, 24).map((row, i) => (
-                  <tr key={i} className="border-b border-white/5">
-                    <td className="py-1.5 pr-4">{row.year}</td>
-                    <td className="py-1.5 pr-4">{row.month}</td>
-                    <td className="py-1.5 font-mono">{row.count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-gray-500">No time series data available.</p>
-        )}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h2 className="text-2xl font-bold text-white">Analytics</h2>
+        <TabNavigation tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
 
-      {/* Hourly Distribution */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-        <h3 className="text-white font-semibold mb-4">
-          Hourly Distribution
-        </h3>
-        {hourly.length > 0 ? (
-          <div className="flex items-end gap-1 h-40">
-            {hourly.map((h) => {
-              const max = Math.max(...hourly.map((x) => x.count));
-              const pct = max > 0 ? (h.count / max) * 100 : 0;
-              return (
-                <div
-                  key={h.hour}
-                  className="flex-1 flex flex-col items-center"
-                >
-                  <div
-                    className="w-full bg-primary-500 rounded-t"
-                    style={{ height: `${pct}%` }}
-                    title={`Hour ${h.hour}: ${h.count}`}
-                  />
-                  <span className="text-xs text-gray-500 mt-1">
-                    {h.hour}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-gray-500">No hourly data available.</p>
-        )}
-      </div>
+      {error && !loading && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+          <p className="text-red-400 text-sm mb-3">
+            Unable to load analytics data. Make sure the backend services are running.
+          </p>
+          <button
+            onClick={loadData}
+            className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {activeTab === "temporal" && (
+        <TemporalCharts
+          monthlyData={monthlyData}
+          weekdayData={weekdayData}
+          hourlyData={hourlyData}
+          loading={loading}
+        />
+      )}
+
+      {activeTab === "spatial" && (
+        <SpatialCharts
+          areaStats={areaStats}
+          riskScores={riskScores}
+          areas={areas}
+          loading={loading}
+        />
+      )}
+
+      {activeTab === "crimes" && (
+        <CrimeTypeCharts
+          crimeTypes={crimeTypes}
+          areaStats={areaStats}
+          loading={loading}
+        />
+      )}
+
+      {activeTab === "trends" && (
+        <TrendCharts
+          monthlyData={monthlyData}
+          areas={areas}
+          loading={loading}
+        />
+      )}
     </div>
   );
 }

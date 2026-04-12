@@ -27,6 +27,15 @@ export const fetchTimeSeries = (filters = {}) =>
 export const fetchHourlyDistribution = (filters = {}) =>
   api.get("/data/stats/hourly", { params: filters }).then((r) => r.data);
 
+export const fetchStatsByArea = (filters = {}) =>
+  api.get("/data/stats/by-area", { params: filters }).then((r) => r.data);
+
+export const fetchStatsByCrimeType = (filters = {}, limit = 20) =>
+  api.get("/data/stats/by-crime-type", { params: { ...filters, limit } }).then((r) => r.data);
+
+export const fetchAreaTimeMatrix = (area_name, crm_cd_desc) =>
+  api.get("/data/stats/area-time-matrix", { params: { area_name, crm_cd_desc } }).then((r) => r.data);
+
 // ── Map service ────────────────────────────────────────
 
 export const fetchHeatmapData = (filters = {}) =>
