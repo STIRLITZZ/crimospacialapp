@@ -38,6 +38,9 @@ export const fetchGeoJSON = (filters = {}) =>
 export const fetchClusters = (filters = {}) =>
   api.get("/map/clusters", { params: filters }).then((r) => r.data);
 
+export const fetchIncidentPoints = (params = {}) =>
+  api.get("/map/incident-points", { params }).then((r) => r.data);
+
 // ── ML service ─────────────────────────────────────────
 
 export const fetchPrediction = (input) =>
