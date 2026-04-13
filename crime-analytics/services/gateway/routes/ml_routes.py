@@ -16,6 +16,24 @@ async def train(request: Request):
         return JSONResponse(content=resp.json(), status_code=resp.status_code)
 
 
+@router.post("/train-csv")
+async def train_csv(request: Request):
+    """Proxy CSV file upload to the ML service for training."""
+    form = await request.form()
+    file = form.get("file")
+    if not file:
+        return JSONResponse(
+            content={"detail": "No file provided"}, status_code=400
+        )
+
+    contents = await file.read()
+
+    async with httpx.AsyncClient(timeout=600.0) as client:
+        files = {"file": (file.filename, contents, file.content_type or "text/csv")}
+        resp = await client.post(f"{ML_SERVICE_URL}/ml/train-csv", files=files)
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
 @router.post("/predict")
 async def predict(request: Request):
     body = await request.json()

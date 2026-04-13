@@ -61,4 +61,15 @@ export const fetchModelInfo = () =>
 export const fetchAreaRiskPrediction = (input) =>
   api.post("/ml/predict-area-risk", input).then((r) => r.data);
 
+export const trainModelFromCSV = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api
+    .post("/ml/train-csv", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 600000, // 10 min for large datasets
+    })
+    .then((r) => r.data);
+};
+
 export default api;

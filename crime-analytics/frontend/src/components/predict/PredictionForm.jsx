@@ -55,10 +55,15 @@ export default function PredictionForm({ onPredict, loading }) {
     hour: now.getHours(),
     area: 1,
     vict_age: 30,
-    vict_sex: "M",
+    vict_sex: 2,
     lat: 34.05,
     lon: -118.25,
     quarter: Math.ceil((now.getMonth() + 1) / 3),
+    // Extended CSV features
+    rpt_dist_no: 100,
+    vict_descent: 0,
+    premis_cd: 101,
+    weapon_used_cd: 400,
   });
 
   // Auto-calculate IsWeekend and IsNight
@@ -127,23 +132,39 @@ export default function PredictionForm({ onPredict, loading }) {
           </div>
         </div>
 
-        {/* LAPD Area */}
-        <label className="block">
-          <span className="text-gray-400 text-xs uppercase tracking-wider">
-            LAPD Area
-          </span>
-          <select
-            value={form.area}
-            onChange={(e) => update("area", parseInt(e.target.value, 10))}
-            className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-          >
-            {Object.entries(AREA_MAP).map(([code, name]) => (
-              <option key={code} value={code}>
-                {code} — {name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/* LAPD Area + Rpt Dist No */}
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-gray-400 text-xs uppercase tracking-wider">
+              LAPD Area
+            </span>
+            <select
+              value={form.area}
+              onChange={(e) => update("area", parseInt(e.target.value, 10))}
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+            >
+              {Object.entries(AREA_MAP).map(([code, name]) => (
+                <option key={code} value={code}>
+                  {code} — {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-gray-400 text-xs uppercase tracking-wider">
+              Rpt Dist No
+            </span>
+            <input
+              type="number"
+              min={0}
+              value={form.rpt_dist_no}
+              onChange={(e) =>
+                update("rpt_dist_no", parseInt(e.target.value, 10) || 0)
+              }
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+            />
+          </label>
+        </div>
 
         {/* Date & Time */}
         <div className="grid grid-cols-3 gap-3">
@@ -214,7 +235,7 @@ export default function PredictionForm({ onPredict, loading }) {
         </label>
 
         {/* Victim info */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
               Victim Age
@@ -224,23 +245,71 @@ export default function PredictionForm({ onPredict, loading }) {
               min={0}
               max={120}
               value={form.vict_age}
-              onChange={(e) => update("vict_age", parseInt(e.target.value, 10) || 0)}
+              onChange={(e) =>
+                update("vict_age", parseInt(e.target.value, 10) || 0)
+              }
               className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             />
           </label>
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Victim Sex
+              Vict Sex (code)
             </span>
-            <select
+            <input
+              type="number"
+              min={0}
               value={form.vict_sex}
-              onChange={(e) => update("vict_sex", e.target.value)}
+              onChange={(e) =>
+                update("vict_sex", parseInt(e.target.value, 10) || 0)
+              }
               className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="M">Male</option>
-              <option value="F">Female</option>
-              <option value="X">Unknown</option>
-            </select>
+            />
+          </label>
+          <label className="block">
+            <span className="text-gray-400 text-xs uppercase tracking-wider">
+              Vict Descent
+            </span>
+            <input
+              type="number"
+              min={0}
+              value={form.vict_descent}
+              onChange={(e) =>
+                update("vict_descent", parseInt(e.target.value, 10) || 0)
+              }
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+            />
+          </label>
+        </div>
+
+        {/* Premise & Weapon codes */}
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-gray-400 text-xs uppercase tracking-wider">
+              Premis Cd
+            </span>
+            <input
+              type="number"
+              min={0}
+              value={form.premis_cd}
+              onChange={(e) =>
+                update("premis_cd", parseInt(e.target.value, 10) || 0)
+              }
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+            />
+          </label>
+          <label className="block">
+            <span className="text-gray-400 text-xs uppercase tracking-wider">
+              Weapon Used Cd
+            </span>
+            <input
+              type="number"
+              min={0}
+              value={form.weapon_used_cd}
+              onChange={(e) =>
+                update("weapon_used_cd", parseInt(e.target.value, 10) || 0)
+              }
+              className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+            />
           </label>
         </div>
 
