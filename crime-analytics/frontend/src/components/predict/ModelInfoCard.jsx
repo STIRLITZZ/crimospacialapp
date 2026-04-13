@@ -101,10 +101,8 @@ export default function ModelInfoCard() {
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
-              <span className="text-gray-500">Best Model:</span>{" "}
-              <span className="text-gray-200">
-                {trainResult.best_model}
-              </span>
+              <span className="text-gray-500">Model:</span>{" "}
+              <span className="text-gray-200">Random Forest</span>
             </div>
             <div>
               <span className="text-gray-500">Accuracy:</span>{" "}
@@ -123,35 +121,6 @@ export default function ModelInfoCard() {
               </span>
             </div>
           </div>
-
-          {/* Models comparison */}
-          {trainResult.models_comparison && (
-            <div className="mt-2">
-              <p className="text-gray-500 text-xs uppercase mb-1">
-                Models Comparison
-              </p>
-              <div className="space-y-1">
-                {Object.entries(trainResult.models_comparison).map(
-                  ([name, data]) => (
-                    <div key={name} className="flex items-center gap-2">
-                      <span className="text-gray-400 text-xs w-32 truncate">
-                        {name}
-                      </span>
-                      <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-blue-500"
-                          style={{ width: `${data.accuracy * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-gray-300 text-xs w-12 text-right">
-                        {(data.accuracy * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -6,12 +6,10 @@ from typing import Tuple
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.svm import LinearSVC
-from sklearn.utils.class_weight import compute_sample_weight
 
 # ── Original feature set (DB-based training) ──────────
 
@@ -153,42 +151,20 @@ def prepare_csv_training_data(
 
 
 def train_models(X_train: pd.DataFrame, y_train: pd.Series) -> dict:
-    """Train three classifiers (original, no balancing)."""
-    models = {}
-
-    svc = LinearSVC(max_iter=2000, random_state=42)
-    svc.fit(X_train, y_train)
-    models["linear_svc"] = svc
-
-    gb = GradientBoostingClassifier(
-        n_estimators=100, max_depth=5, random_state=42
-    )
-    gb.fit(X_train, y_train)
-    models["gradient_boosting"] = gb
-
+    """Train RandomForest classifier."""
     rf = RandomForestClassifier(
         n_estimators=200, max_depth=15, n_jobs=-1, random_state=42
     )
     rf.fit(X_train, y_train)
-    models["random_forest"] = rf
-
-    return models
+    return {"random_forest": rf}
 
 
 def train_models_balanced(X_train: pd.DataFrame, y_train: pd.Series) -> dict:
-    """Train classifiers with class balancing for better per-crime-type accuracy.
+    """Train RandomForest with class_weight='balanced'.
 
-    Uses class_weight='balanced' so that each crime type is weighted equally
-    during training, preventing rare crime types from being ignored.
+    Each crime type is weighted equally during training,
+    preventing rare crime types from being ignored.
     """
-    models = {}
-
-    svc = LinearSVC(
-        max_iter=3000, class_weight="balanced", random_state=42
-    )
-    svc.fit(X_train, y_train)
-    models["linear_svc"] = svc
-
     rf = RandomForestClassifier(
         n_estimators=300,
         max_depth=20,
@@ -197,17 +173,7 @@ def train_models_balanced(X_train: pd.DataFrame, y_train: pd.Series) -> dict:
         random_state=42,
     )
     rf.fit(X_train, y_train)
-    models["random_forest"] = rf
-
-    # GradientBoosting uses sample_weight for balancing
-    gb = GradientBoostingClassifier(
-        n_estimators=150, max_depth=6, random_state=42
-    )
-    sample_weights = compute_sample_weight("balanced", y_train)
-    gb.fit(X_train, y_train, sample_weight=sample_weights)
-    models["gradient_boosting"] = gb
-
-    return models
+    return {"random_forest": rf}
 
 
 # ── Evaluation ────────────────────────────────────────
