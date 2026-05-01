@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { translateRiskLevel } from "../lib/translations";
 
 const RISK_COLORS = {
   very_low: "#2ecc71",
@@ -43,21 +44,21 @@ export default function RiskTable({ scores, loading }) {
       className="py-2 pr-3 text-left cursor-pointer hover:text-white transition-colors select-none"
       onClick={() => toggleSort(field)}
     >
-      {label} {sortKey === field ? (sortAsc ? "▲" : "▼") : ""}
+      {label} {sortKey === field ? (sortAsc ? "^" : "v") : ""}
     </th>
   );
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5 h-[380px] flex flex-col">
-      <h3 className="text-white font-semibold mb-3">Risk Scores</h3>
+      <h3 className="text-white font-semibold mb-3">Scoruri de risc</h3>
       <div className="overflow-y-auto flex-1">
         <table className="w-full text-sm">
           <thead className="text-gray-500 text-xs uppercase border-b border-white/10 sticky top-0 bg-dark-900/80">
             <tr>
-              <SortHeader label="Area" field="area_name" />
-              <SortHeader label="Incidents" field="incident_count" />
-              <SortHeader label="Score" field="risk_score" />
-              <th className="py-2 text-left">Level</th>
+              <SortHeader label="Zona" field="area_name" />
+              <SortHeader label="Incidente" field="incident_count" />
+              <SortHeader label="Scor" field="risk_score" />
+              <th className="py-2 text-left">Nivel</th>
             </tr>
           </thead>
           <tbody className="text-gray-300">
@@ -77,11 +78,12 @@ export default function RiskTable({ scores, loading }) {
                   <span
                     className="text-xs font-semibold px-2 py-0.5 rounded-full"
                     style={{
-                      backgroundColor: (RISK_COLORS[r.risk_level] || "#f39c12") + "25",
+                      backgroundColor:
+                        (RISK_COLORS[r.risk_level] || "#f39c12") + "25",
                       color: RISK_COLORS[r.risk_level] || "#f39c12",
                     }}
                   >
-                    {r.risk_level}
+                    {translateRiskLevel(r.risk_level)}
                   </span>
                 </td>
               </tr>
@@ -89,7 +91,7 @@ export default function RiskTable({ scores, loading }) {
           </tbody>
         </table>
         {(!scores || scores.length === 0) && (
-          <p className="text-gray-500 text-sm mt-4 text-center">No data</p>
+          <p className="text-gray-500 text-sm mt-4 text-center">Nu exista date</p>
         )}
       </div>
     </div>

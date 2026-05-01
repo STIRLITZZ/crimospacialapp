@@ -1,7 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useMemo } from "react";
 import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
 import { useNavigate } from "react-router-dom";
 import { useFilters } from "../context/FilterContext";
+import { useTheme } from "../context/ThemeContext";
+import { translateRiskLevel } from "../lib/translations";
 
 const LA_CENTER = [34.05, -118.25];
 const RISK_COLORS = {
@@ -15,6 +17,27 @@ const RISK_COLORS = {
 export default function MiniMap({ geojson, loading }) {
   const navigate = useNavigate();
   const { setSelectedArea } = useFilters();
+  const { isDark } = useTheme();
+  const layerKey = useMemo(
+    () =>
+      geojson?.features?.length
+        ? geojson.features
+            .map((feature) => {
+              const props = feature.properties || {};
+              return [
+                props.area_name || "",
+                props.incident_count || 0,
+                props.risk_level || "",
+                props.risk_score || 0,
+              ].join("|");
+            })
+            .join(";")
+        : "empty",
+    [geojson]
+  );
+  const tileUrl = isDark
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
   if (loading) {
     return (
@@ -29,8 +52,8 @@ export default function MiniMap({ geojson, loading }) {
     const props = feature.properties || {};
     layer.bindTooltip(
       `<strong>${props.area_name}</strong><br/>` +
-        `Incidents: ${props.incident_count || 0}<br/>` +
-        `Risk: ${props.risk_level || "N/A"}`,
+        `Incidente: ${props.incident_count || 0}<br/>` +
+        `Risc: ${translateRiskLevel(props.risk_level) || "N/A"}`,
       { sticky: true }
     );
     layer.on("click", () => {
@@ -45,14 +68,14 @@ export default function MiniMap({ geojson, loading }) {
       fillColor: RISK_COLORS[level] || "#f39c12",
       weight: 1.5,
       opacity: 0.8,
-      color: "#ffffff44",
+      color: "var(--map-stroke)",
       fillOpacity: 0.55,
     };
   };
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-      <h3 className="text-white font-semibold mb-3">Area Risk Map</h3>
+      <h3 className="text-white font-semibold mb-3">Harta riscului pe zone</h3>
       <div className="h-[320px] rounded-lg overflow-hidden">
         <MapContainer
           center={LA_CENTER}
@@ -62,11 +85,11 @@ export default function MiniMap({ geojson, loading }) {
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url={tileUrl}
           />
           {geojson && geojson.features?.length > 0 && (
             <GeoJSON
-              key={JSON.stringify(geojson).slice(0, 100)}
+              key={layerKey}
               data={geojson}
               style={style}
               onEachFeature={onEachFeature}

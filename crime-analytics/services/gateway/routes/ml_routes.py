@@ -52,6 +52,32 @@ async def predict_area_risk(request: Request):
         return JSONResponse(content=resp.json(), status_code=resp.status_code)
 
 
+@router.get("/hotspot-models")
+async def hotspot_models():
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(f"{ML_SERVICE_URL}/ml/hotspot-models")
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@router.post("/predict-hotspots")
+async def predict_hotspots(request: Request):
+    body = await request.json()
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            f"{ML_SERVICE_URL}/ml/predict-hotspots", json=body
+        )
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
+@router.get("/hotspot-model-info/{crime_code}")
+async def hotspot_model_info(crime_code: int):
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(
+            f"{ML_SERVICE_URL}/ml/hotspot-model-info/{crime_code}"
+        )
+        return JSONResponse(content=resp.json(), status_code=resp.status_code)
+
+
 @router.get("/model-info")
 async def model_info():
     async with httpx.AsyncClient(timeout=10.0) as client:

@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useFilters } from "../context/FilterContext";
+import { useEtlStatus } from "../context/EtlStatusContext";
 import {
   fetchDashboard,
   fetchTimeSeries,
@@ -12,6 +13,8 @@ import TopCrimesChart from "../components/TopCrimesChart";
 import TimeSeriesChart from "../components/TimeSeriesChart";
 import RiskTable from "../components/RiskTable";
 import HourlyHeatmap from "../components/HourlyHeatmap";
+import { DataImportPlaceholder } from "../components/DataImportState";
+import { translateCrimeType, translateRiskLevel } from "../lib/translations";
 
 const RISK_COLORS = {
   very_low: "#2ecc71",
@@ -23,6 +26,7 @@ const RISK_COLORS = {
 
 export default function Dashboard() {
   const { buildFilterParams } = useFilters();
+  const { isWaitingForImport, statusInfo, isChecking, dataVersion } = useEtlStatus();
 
   const [dashboard, setDashboard] = useState(null);
   const [timeSeries, setTimeSeries] = useState(null);
@@ -39,7 +43,7 @@ export default function Dashboard() {
   const [errorHourly, setErrorHourly] = useState(false);
   const [errorGeo, setErrorGeo] = useState(false);
 
-  const params = buildFilterParams();
+  const params = useMemo(() => buildFilterParams(), [buildFilterParams]);
 
   const loadDashboard = useCallback(() => {
     setLoadingDash(true);
@@ -77,10 +81,25 @@ export default function Dashboard() {
       .finally(() => setLoadingGeo(false));
   }, [params]);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
-  useEffect(() => { loadTimeSeries(); }, [loadTimeSeries]);
-  useEffect(() => { loadHourly(); }, [loadHourly]);
-  useEffect(() => { loadGeoJSON(); }, [loadGeoJSON]);
+  useEffect(() => {
+    if (isWaitingForImport) return;
+    loadDashboard();
+  }, [dataVersion, isWaitingForImport, loadDashboard]);
+
+  useEffect(() => {
+    if (isWaitingForImport) return;
+    loadTimeSeries();
+  }, [dataVersion, isWaitingForImport, loadTimeSeries]);
+
+  useEffect(() => {
+    if (isWaitingForImport) return;
+    loadHourly();
+  }, [dataVersion, isWaitingForImport, loadHourly]);
+
+  useEffect(() => {
+    if (isWaitingForImport) return;
+    loadGeoJSON();
+  }, [dataVersion, isWaitingForImport, loadGeoJSON]);
 
   // Derived data from dashboard response
   const summary = dashboard?.summary;
@@ -105,31 +124,35 @@ export default function Dashboard() {
     }
   }
 
+  if (isWaitingForImport) {
+    return <DataImportPlaceholder statusInfo={statusInfo} isChecking={isChecking} />;
+  }
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Dashboard</h2>
+      <h2 className="text-2xl font-bold text-white">Panou de control</h2>
 
       {/* ROW 1: Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {errorDash ? (
           <div className="col-span-full">
-            <ErrorRetry message="Failed to load summary data" onRetry={loadDashboard} />
+            <ErrorRetry message="Nu am putut incarca sumarul" onRetry={loadDashboard} />
           </div>
         ) : (
           <>
             <SummaryCard
-              label="Total Incidents"
+              label="Total incidente"
               value={summary?.total_incidents ?? 0}
               trend={trend}
               loading={loadingDash}
             />
             <SummaryCard
-              label="Highest Risk Area"
+              label="Zona cu risc maxim"
               value={highestRisk?.area_name || "N/A"}
               badge={
                 highestRisk
                   ? {
-                      text: highestRisk.risk_level,
+                      text: translateRiskLevel(highestRisk.risk_level),
                       color: RISK_COLORS[highestRisk.risk_level] || "#f39c12",
                     }
                   : null
@@ -138,13 +161,13 @@ export default function Dashboard() {
               loading={loadingDash}
             />
             <SummaryCard
-              label="Most Common Crime"
-              value={summary?.most_common_crime || "N/A"}
+              label="Cea mai frecventa infractiune"
+              value={translateCrimeType(summary?.most_common_crime) || "N/A"}
               small
               loading={loadingDash}
             />
             <SummaryCard
-              label="Active Period"
+              label="Perioada activa"
               value={summary?.date_range || "N/A"}
               small
               loading={loadingDash}
@@ -157,14 +180,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
           {errorGeo ? (
-            <ErrorRetry message="Failed to load map data" onRetry={loadGeoJSON} />
+            <ErrorRetry message="Nu am putut incarca datele pentru harta" onRetry={loadGeoJSON} />
           ) : (
             <MiniMap geojson={geojson} loading={loadingGeo} />
           )}
         </div>
         <div className="lg:col-span-2">
           {errorDash ? (
-            <ErrorRetry message="Failed to load crime types" onRetry={loadDashboard} />
+            <ErrorRetry message="Nu am putut incarca tipurile de infractiuni" onRetry={loadDashboard} />
           ) : (
             <TopCrimesChart data={crimeTypes} loading={loadingDash} />
           )}
@@ -175,14 +198,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
           {errorTS ? (
-            <ErrorRetry message="Failed to load time series" onRetry={loadTimeSeries} />
+            <ErrorRetry message="Nu am putut incarca seria temporala" onRetry={loadTimeSeries} />
           ) : (
             <TimeSeriesChart data={timeSeries} loading={loadingTS} />
           )}
         </div>
         <div className="lg:col-span-2">
           {errorDash ? (
-            <ErrorRetry message="Failed to load risk scores" onRetry={loadDashboard} />
+            <ErrorRetry message="Nu am putut incarca scorurile de risc" onRetry={loadDashboard} />
           ) : (
             <RiskTable scores={riskScores} loading={loadingDash} />
           )}
@@ -191,7 +214,7 @@ export default function Dashboard() {
 
       {/* ROW 4: HourlyHeatmap (full width) */}
       {errorHourly ? (
-        <ErrorRetry message="Failed to load hourly distribution" onRetry={loadHourly} />
+        <ErrorRetry message="Nu am putut incarca distributia pe ore" onRetry={loadHourly} />
       ) : (
         <HourlyHeatmap data={hourly} loading={loadingHourly} />
       )}
@@ -207,7 +230,7 @@ function ErrorRetry({ message, onRetry }) {
         onClick={onRetry}
         className="px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-sm rounded-lg transition-colors"
       >
-        Retry
+        Reincearca
       </button>
     </div>
   );

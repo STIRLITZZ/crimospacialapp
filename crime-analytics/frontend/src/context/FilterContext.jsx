@@ -1,9 +1,12 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { fetchAreas, fetchCrimeTypes, fetchDateRange } from "../services/api";
+import { useEtlStatus } from "./EtlStatusContext";
 
 const FilterContext = createContext();
 
 export function FilterProvider({ children }) {
+  const { isWaitingForImport, dataVersion } = useEtlStatus();
+
   // Global filter state
   const [selectedArea, setSelectedArea] = useState("");
   const [selectedCrimeType, setSelectedCrimeType] = useState("");
@@ -15,6 +18,10 @@ export function FilterProvider({ children }) {
   const [dateRange, setDateRange] = useState({ min: null, max: null });
 
   useEffect(() => {
+    if (isWaitingForImport) {
+      return;
+    }
+
     fetchAreas().then(setAreas).catch(() => {});
     fetchCrimeTypes().then(setCrimeTypes).catch(() => {});
     fetchDateRange()
@@ -25,17 +32,17 @@ export function FilterProvider({ children }) {
         setYearRange({ from: minYear, to: maxYear });
       })
       .catch(() => {});
-  }, []);
+  }, [dataVersion, isWaitingForImport]);
 
   /** Build a query-param object from current filters. */
-  function buildFilterParams() {
+  const buildFilterParams = useCallback(() => {
     const params = {};
     if (selectedArea) params.area_name = selectedArea;
     if (selectedCrimeType) params.crm_cd_desc = selectedCrimeType;
     if (yearRange.from) params.year_from = yearRange.from;
     if (yearRange.to) params.year_to = yearRange.to;
     return params;
-  }
+  }, [selectedArea, selectedCrimeType, yearRange.from, yearRange.to]);
 
   return (
     <FilterContext.Provider

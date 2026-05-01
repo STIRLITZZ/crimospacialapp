@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 export default function TabNavigation({ tabs, activeTab, onTabChange }) {
   return (
     <div className="flex gap-1 bg-white/5 rounded-lg p-1">

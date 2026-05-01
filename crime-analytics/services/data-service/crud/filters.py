@@ -22,4 +22,6 @@ def apply_filters(stmt: Select, filters: CrimeFilter) -> Select:
         stmt = stmt.where(CrimeIncident.hour <= filters.hour_to)
     if filters.is_weekend is not None:
         stmt = stmt.where(CrimeIncident.is_weekend == filters.is_weekend)
+    if filters.is_night is not None:
+        stmt = stmt.where(CrimeIncident.is_night == filters.is_night)
     return stmt

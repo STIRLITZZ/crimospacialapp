@@ -1,35 +1,73 @@
-import { useState, useCallback, useEffect } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMapEvents } from "react-leaflet";
+import { useCallback, useEffect, useState } from "react";
+import {
+  CircleMarker,
+  MapContainer,
+  Popup,
+  TileLayer,
+  Tooltip,
+  useMapEvents,
+} from "react-leaflet";
 import { Layers } from "lucide-react";
 import ChoroplethLayer from "./ChoroplethLayer";
 import HeatmapLayer from "./HeatmapLayer";
 import MapLegend from "./MapLegend";
+import { useTheme } from "../../context/ThemeContext";
+import {
+  translateCrimeType,
+  translateSamplingLabel,
+} from "../../lib/translations";
+
+function clusterColor(count) {
+  if (count >= 500) return { fill: "#dc2626", stroke: "#fca5a5" };
+  if (count >= 200) return { fill: "#ea580c", stroke: "#fdba74" };
+  if (count >= 80) return { fill: "#ca8a04", stroke: "#fde047" };
+  if (count >= 30) return { fill: "#16a34a", stroke: "#86efac" };
+  return { fill: "#2563eb", stroke: "#93c5fd" };
+}
 
 const LA_CENTER = [34.05, -118.25];
-const LAYER_OPTIONS = ["Choropleth", "Heatmap", "Clusters", "Points"];
+const LAYER_OPTIONS = [
+  { value: "Choropleth", label: "Coropleta" },
+  { value: "Heatmap", label: "Harta termica" },
+  { value: "Clusters", label: "Clustere" },
+  { value: "Dot Map", label: "Harta cu puncte" },
+  { value: "Points", label: "Puncte individuale" },
+];
 
 function ZoomTracker({ onZoomChange, onBoundsChange }) {
   const map = useMapEvents({
     zoomend: () => {
       onZoomChange(map.getZoom());
-      const b = map.getBounds();
+      const bounds = map.getBounds();
       onBoundsChange({
-        lat_min: b.getSouth(),
-        lat_max: b.getNorth(),
-        lon_min: b.getWest(),
-        lon_max: b.getEast(),
+        lat_min: bounds.getSouth(),
+        lat_max: bounds.getNorth(),
+        lon_min: bounds.getWest(),
+        lon_max: bounds.getEast(),
       });
     },
     moveend: () => {
-      const b = map.getBounds();
+      const bounds = map.getBounds();
       onBoundsChange({
-        lat_min: b.getSouth(),
-        lat_max: b.getNorth(),
-        lon_min: b.getWest(),
-        lon_max: b.getEast(),
+        lat_min: bounds.getSouth(),
+        lat_max: bounds.getNorth(),
+        lon_min: bounds.getWest(),
+        lon_max: bounds.getEast(),
       });
     },
   });
+
+  useEffect(() => {
+    onZoomChange(map.getZoom());
+    const bounds = map.getBounds();
+    onBoundsChange({
+      lat_min: bounds.getSouth(),
+      lat_max: bounds.getNorth(),
+      lon_min: bounds.getWest(),
+      lon_max: bounds.getEast(),
+    });
+  }, [map, onBoundsChange, onZoomChange]);
+
   return null;
 }
 
@@ -38,17 +76,34 @@ export default function CrimeMap({
   heatmapData,
   clusterData,
   pointsData,
+  activeLayer,
+  onLayerChange,
   onAreaClick,
   onBoundsChange,
 }) {
-  const [activeLayer, setActiveLayer] = useState("Choropleth");
+  const [internalLayer, setInternalLayer] = useState("Choropleth");
   const [showLayerMenu, setShowLayerMenu] = useState(false);
   const [zoom, setZoom] = useState(10);
+  const { isDark } = useTheme();
+  const currentLayer = activeLayer ?? internalLayer;
+  const tileUrl = isDark
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
-  const handleZoomChange = useCallback((z) => setZoom(z), []);
+  const handleZoomChange = useCallback((value) => setZoom(value), []);
+  const handleLayerChange = useCallback(
+    (layer) => {
+      if (onLayerChange) {
+        onLayerChange(layer);
+        return;
+      }
+      setInternalLayer(layer);
+    },
+    [onLayerChange]
+  );
 
-  // Show points layer content only at zoom > 14
-  const showPoints = activeLayer === "Points" && zoom > 14;
+  const showPoints = currentLayer === "Points" && zoom > 10;
+  const showDotMap = currentLayer === "Dot Map";
   const points = pointsData?.points || [];
   const clusters = clusterData?.clusters || [];
 
@@ -62,7 +117,7 @@ export default function CrimeMap({
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url={tileUrl}
         />
 
         <ZoomTracker
@@ -70,43 +125,49 @@ export default function CrimeMap({
           onBoundsChange={onBoundsChange}
         />
 
-        {/* Choropleth Layer */}
-        {activeLayer === "Choropleth" && (
+        {currentLayer === "Choropleth" && (
           <ChoroplethLayer geojson={geojson} onAreaClick={onAreaClick} />
         )}
 
-        {/* Heatmap Layer */}
-        {activeLayer === "Heatmap" && <HeatmapLayer data={heatmapData} />}
+        {currentLayer === "Heatmap" && <HeatmapLayer data={heatmapData} />}
 
-        {/* Clusters Layer */}
-        {activeLayer === "Clusters" &&
-          clusters.map((c, i) => {
-            const radius = Math.max(8, Math.min(30, Math.sqrt(c.count) * 2));
-            const topCrime = c.crime_types
-              ? Object.entries(c.crime_types)
+        {currentLayer === "Clusters" &&
+          clusters.map((cluster, i) => {
+            const radius = Math.max(10, Math.min(40, Math.sqrt(cluster.count) * 2.5));
+            const { fill, stroke } = clusterColor(cluster.count);
+            const topCrime = cluster.crime_types
+              ? Object.entries(cluster.crime_types)
                   .sort((a, b) => b[1] - a[1])
                   .slice(0, 3)
               : [];
             return (
               <CircleMarker
                 key={i}
-                center={c.center}
+                center={cluster.center}
                 radius={radius}
                 pathOptions={{
-                  fillColor: "#3b82f6",
-                  fillOpacity: 0.6,
-                  color: "#60a5fa",
-                  weight: 1.5,
+                  fillColor: fill,
+                  fillOpacity: 0.7,
+                  color: stroke,
+                  weight: 2,
                 }}
               >
+                <Tooltip direction="top" offset={[0, -radius]} opacity={0.9} permanent={false}>
+                  <span className="text-xs font-semibold">
+                    {cluster.count.toLocaleString()}
+                  </span>
+                </Tooltip>
                 <Popup>
-                  <div className="text-xs">
-                    <p className="font-semibold">
-                      {c.count.toLocaleString()} incidents
+                  <div className="text-xs space-y-0.5">
+                    <p className="font-bold text-sm mb-1">
+                      {cluster.count.toLocaleString()} incidente
                     </p>
                     {topCrime.map(([type, count]) => (
-                      <p key={type}>
-                        {type}: {count}
+                      <p key={type} className="text-gray-600">
+                        <span className="font-medium">
+                          {translateCrimeType(type)}:
+                        </span>{" "}
+                        {count}
                       </p>
                     ))}
                   </div>
@@ -115,12 +176,27 @@ export default function CrimeMap({
             );
           })}
 
-        {/* Points Layer (zoom > 14 only) */}
-        {showPoints &&
-          points.map((p, i) => (
+        {showDotMap &&
+          points.map((point, i) => (
             <CircleMarker
-              key={i}
-              center={[p.lat, p.lon]}
+              key={`dot-${point.id || point.dr_no || i}`}
+              center={[point.lat, point.lon]}
+              radius={2.5}
+              pathOptions={{
+                fillColor: "#ef4444",
+                fillOpacity: 0.28,
+                color: "#f97316",
+                opacity: 0.18,
+                weight: 0.5,
+              }}
+            />
+          ))}
+
+        {showPoints &&
+          points.map((point, i) => (
+            <CircleMarker
+              key={`point-${point.id || point.dr_no || i}`}
+              center={[point.lat, point.lon]}
               radius={4}
               pathOptions={{
                 fillColor: "#ef4444",
@@ -131,57 +207,67 @@ export default function CrimeMap({
             >
               <Popup>
                 <div className="text-xs">
-                  <p className="font-semibold">{p.crm_cd_desc || "Incident"}</p>
-                  <p>Area: {p.area_name || "N/A"}</p>
-                  <p>Date: {p.date_occ || "N/A"}</p>
+                  <p className="font-semibold">
+                    {translateCrimeType(point.crm_cd_desc) || "Incident"}
+                  </p>
+                  <p>Zona: {point.area_name || "N/A"}</p>
+                  <p>Data: {point.date_occ || "N/A"}</p>
                 </div>
               </Popup>
             </CircleMarker>
           ))}
 
-        {/* Points layer zoom hint */}
-        {activeLayer === "Points" && !showPoints && (
+        {showDotMap && pointsData && (
+          <div className="leaflet-top leaflet-center">
+            <div className="leaflet-control bg-gray-900/85 text-gray-200 text-xs px-3 py-1.5 rounded">
+              Afisez {pointsData.count?.toLocaleString() || 0} puncte
+              {pointsData.sampled && pointsData.total_in_bounds
+                ? ` din ${pointsData.total_in_bounds.toLocaleString()} incidente din vedere (${translateSamplingLabel(pointsData.sampling_label)})`
+                : ""}
+            </div>
+          </div>
+        )}
+
+        {currentLayer === "Points" && !showPoints && (
           <div className="leaflet-top leaflet-center">
             <div className="leaflet-control bg-gray-900/80 text-gray-300 text-xs px-3 py-1.5 rounded">
-              Zoom in past level 14 to see individual points
+              Mareste harta pentru a vedea incidentele individuale
             </div>
           </div>
         )}
       </MapContainer>
 
-      {/* Layer Toggle Button (top-right) */}
       <div className="absolute top-3 right-3 z-[1000]">
         <button
           onClick={() => setShowLayerMenu(!showLayerMenu)}
           className="bg-gray-800/90 backdrop-blur border border-white/10 rounded-lg p-2 text-gray-300 hover:text-white transition-colors"
-          title="Toggle layers"
+          title="Comuta straturile"
         >
           <Layers size={18} />
         </button>
         {showLayerMenu && (
-          <div className="mt-1 bg-gray-800/95 backdrop-blur border border-white/10 rounded-lg py-1 min-w-[140px]">
+          <div className="mt-1 bg-gray-800/95 backdrop-blur border border-white/10 rounded-lg py-1 min-w-[170px]">
             {LAYER_OPTIONS.map((layer) => (
               <button
-                key={layer}
+                key={layer.value}
                 onClick={() => {
-                  setActiveLayer(layer);
+                  handleLayerChange(layer.value);
                   setShowLayerMenu(false);
                 }}
                 className={`w-full text-left px-3 py-1.5 text-sm transition-colors ${
-                  activeLayer === layer
+                  currentLayer === layer.value
                     ? "text-blue-400 bg-blue-500/10"
                     : "text-gray-300 hover:bg-white/5"
                 }`}
               >
-                {layer}
+                {layer.label}
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* Legend (bottom-left) */}
-      {activeLayer === "Choropleth" && <MapLegend />}
+      {currentLayer === "Choropleth" && <MapLegend />}
     </div>
   );
 }
