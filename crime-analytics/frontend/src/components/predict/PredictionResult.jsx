@@ -1,20 +1,22 @@
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
+import { translateCrimeType } from "../../lib/translations";
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "#1a1a2e",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  color: "#fff",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "1px solid var(--tooltip-border)",
+  borderRadius: 12,
+  color: "var(--text-strong)",
   fontSize: 12,
+  boxShadow: "0 18px 40px rgba(var(--shadow-rgb), 0.16)",
 };
 
 export default function PredictionResult({ result, error }) {
   if (error) {
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-        <h3 className="text-white font-semibold mb-3">Prediction Result</h3>
+        <h3 className="text-white font-semibold mb-3">Rezultatul predictiei</h3>
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
           <p className="text-red-400 text-sm">{error}</p>
         </div>
@@ -25,9 +27,9 @@ export default function PredictionResult({ result, error }) {
   if (!result) {
     return (
       <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-        <h3 className="text-white font-semibold mb-3">Prediction Result</h3>
+        <h3 className="text-white font-semibold mb-3">Rezultatul predictiei</h3>
         <p className="text-gray-500 text-sm">
-          Fill in the form and click "Predict" to see results.
+          Completeaza formularul si apasa pe "Prezice" ca sa vezi rezultatele.
         </p>
       </div>
     );
@@ -36,9 +38,12 @@ export default function PredictionResult({ result, error }) {
   const confidence = result.confidence || 0;
   const confPct = (confidence * 100).toFixed(1);
   const topProbs = (result.top_probabilities || []).map((p) => ({
-    name: p.crime_type?.length > 20 ? p.crime_type.slice(0, 18) + "..." : p.crime_type,
+    name:
+      translateCrimeType(p.crime_type)?.length > 20
+        ? translateCrimeType(p.crime_type).slice(0, 18) + "..."
+        : translateCrimeType(p.crime_type),
     probability: parseFloat((p.probability * 100).toFixed(1)),
-    full: p.crime_type,
+    full: translateCrimeType(p.crime_type),
   }));
 
   // Feature contributions
@@ -52,20 +57,20 @@ export default function PredictionResult({ result, error }) {
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-5">
-      <h3 className="text-white font-semibold">Prediction Result</h3>
+      <h3 className="text-white font-semibold">Rezultatul predictiei</h3>
 
       {/* Predicted type */}
       <div>
-        <p className="text-gray-400 text-xs uppercase mb-1">Predicted Crime Type</p>
+        <p className="text-gray-400 text-xs uppercase mb-1">Tip de infractiune prezis</p>
         <p className="text-2xl font-bold text-blue-400">
-          {result.predicted_crime_type}
+          {translateCrimeType(result.predicted_crime_type)}
         </p>
       </div>
 
       {/* Confidence bar */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <p className="text-gray-400 text-xs uppercase">Confidence</p>
+          <p className="text-gray-400 text-xs uppercase">Incredere</p>
           <span className="text-white font-mono text-sm">{confPct}%</span>
         </div>
         <div className="w-full h-3 bg-white/5 rounded-full overflow-hidden">
@@ -88,7 +93,7 @@ export default function PredictionResult({ result, error }) {
       {topProbs.length > 0 && (
         <div>
           <p className="text-gray-400 text-xs uppercase mb-2">
-            Top Predicted Types
+            Top tipuri prezise
           </p>
           <ResponsiveContainer width="100%" height={topProbs.length * 36 + 20}>
             <BarChart
@@ -98,7 +103,7 @@ export default function PredictionResult({ result, error }) {
             >
               <XAxis
                 type="number"
-                tick={{ fill: "#9ca3af", fontSize: 10 }}
+                tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
                 domain={[0, "auto"]}
                 unit="%"
               />
@@ -106,7 +111,7 @@ export default function PredictionResult({ result, error }) {
                 dataKey="name"
                 type="category"
                 width={130}
-                tick={{ fill: "#d1d5db", fontSize: 11 }}
+                tick={{ fill: "var(--text-soft)", fontSize: 11 }}
               />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
@@ -119,7 +124,7 @@ export default function PredictionResult({ result, error }) {
                 {topProbs.map((_, i) => (
                   <Cell
                     key={i}
-                    fill={i === 0 ? "#3b82f6" : "#6b7280"}
+                    fill={i === 0 ? "var(--chart-primary)" : "var(--chart-axis)"}
                     fillOpacity={1 - i * 0.15}
                   />
                 ))}
@@ -133,7 +138,7 @@ export default function PredictionResult({ result, error }) {
       {contributions.length > 0 && (
         <div>
           <p className="text-gray-400 text-xs uppercase mb-2">
-            Feature Contributions
+            Contributia variabilelor
           </p>
           <ResponsiveContainer
             width="100%"
@@ -146,18 +151,18 @@ export default function PredictionResult({ result, error }) {
             >
               <XAxis
                 type="number"
-                tick={{ fill: "#9ca3af", fontSize: 10 }}
+                tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
                 domain={[0, "auto"]}
               />
               <YAxis
                 dataKey="name"
                 type="category"
                 width={80}
-                tick={{ fill: "#d1d5db", fontSize: 10 }}
+                tick={{ fill: "var(--text-soft)", fontSize: 10 }}
               />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                formatter={(val) => [`${val}%`, "Importance"]}
+                formatter={(val) => [`${val}%`, "Importanta"]}
               />
               <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
                 {contributions.map((c, i) => (
@@ -171,7 +176,7 @@ export default function PredictionResult({ result, error }) {
             </BarChart>
           </ResponsiveContainer>
           <p className="text-gray-600 text-[10px] mt-1">
-            Higher values indicate stronger influence on prediction.
+            Valorile mai mari indica o influenta mai puternica asupra predictiei.
           </p>
         </div>
       )}

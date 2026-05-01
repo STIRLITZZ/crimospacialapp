@@ -4,19 +4,25 @@ import {
   Map,
   BarChart3,
   BrainCircuit,
+  MoonStar,
+  SunMedium,
 } from "lucide-react";
 import { useFilters } from "./context/FilterContext";
+import { useEtlStatus } from "./context/EtlStatusContext";
+import { useTheme } from "./context/ThemeContext";
+import { translateCrimeTypeBilingual } from "./lib/translations";
 
 import Dashboard from "./pages/Dashboard";
 import MapPage from "./pages/MapPage";
 import Analytics from "./pages/Analytics";
 import Predict from "./pages/Predict";
+import { DataImportBanner } from "./components/DataImportState";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/map", label: "Map", icon: Map },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
-  { to: "/predict", label: "Predict", icon: BrainCircuit },
+  { to: "/", label: "Panou", icon: LayoutDashboard },
+  { to: "/map", label: "Harta", icon: Map },
+  { to: "/analytics", label: "Analiza", icon: BarChart3 },
+  { to: "/predict", label: "Predictii", icon: BrainCircuit },
 ];
 
 function Sidebar() {
@@ -31,15 +37,31 @@ function Sidebar() {
     crimeTypes,
     dateRange,
   } = useFilters();
+  const { toggleTheme, isDark } = useTheme();
 
   return (
-    <aside className="w-64 bg-dark-900 text-white flex flex-col h-screen fixed left-0 top-0">
+    <aside className="app-sidebar w-64 bg-dark-900 text-white flex flex-col h-screen fixed left-0 top-0">
       {/* Logo */}
-      <div className="p-5 border-b border-white/10">
-        <h1 className="text-lg font-bold tracking-tight">
-          Crime Analytics
-        </h1>
-        <p className="text-xs text-gray-400 mt-1">Los Angeles Dashboard</p>
+      <div className="p-5 border-b border-white/10 space-y-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-gray-500">
+            Inteligenta infractionala
+          </p>
+          <h1 className="mt-2 text-xl font-extrabold tracking-tight text-white">
+            Analiza Infractiunilor
+          </h1>
+        </div>
+
+        <button
+          onClick={toggleTheme}
+          className="theme-switch theme-switch--compact"
+          aria-label={isDark ? "Comuta pe tema luminoasa" : "Comuta pe tema intunecata"}
+          title={isDark ? "Comuta pe tema luminoasa" : "Comuta pe tema intunecata"}
+        >
+          <span className="theme-switch__icon">
+            {isDark ? <SunMedium size={18} /> : <MoonStar size={18} />}
+          </span>
+        </button>
       </div>
 
       {/* Navigation */}
@@ -66,7 +88,7 @@ function Sidebar() {
       {/* Global Filters */}
       <div className="p-4 border-t border-white/10 space-y-3">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-          Filters
+          Filtre
         </p>
 
         {/* Area */}
@@ -75,7 +97,7 @@ function Sidebar() {
           onChange={(e) => setSelectedArea(e.target.value)}
           className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-primary-500"
         >
-          <option value="">All Areas</option>
+          <option value="">Toate zonele</option>
           {areas.map((a) => (
             <option key={a} value={a}>
               {a}
@@ -89,10 +111,10 @@ function Sidebar() {
           onChange={(e) => setSelectedCrimeType(e.target.value)}
           className="w-full bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-primary-500"
         >
-          <option value="">All Crime Types</option>
+          <option value="">Toate tipurile de infractiuni</option>
           {crimeTypes.map((c) => (
             <option key={c} value={c}>
-              {c}
+              {translateCrimeTypeBilingual(c)}
             </option>
           ))}
         </select>
@@ -109,7 +131,7 @@ function Sidebar() {
             }
             className="w-1/2 bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-sm text-gray-200 focus:outline-none"
           >
-            <option value="">From</option>
+            <option value="">De la</option>
             {dateRange.min &&
               dateRange.max &&
               Array.from(
@@ -131,7 +153,7 @@ function Sidebar() {
             }
             className="w-1/2 bg-white/5 border border-white/10 rounded-md px-2 py-1.5 text-sm text-gray-200 focus:outline-none"
           >
-            <option value="">To</option>
+            <option value="">Pana la</option>
             {dateRange.min &&
               dateRange.max &&
               Array.from(
@@ -150,11 +172,14 @@ function Sidebar() {
 }
 
 function App() {
+  const { statusInfo, isChecking } = useEtlStatus();
+
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen bg-dark-800">
+      <div className="app-shell flex min-h-screen bg-dark-800">
         <Sidebar />
-        <main className="ml-64 flex-1 p-6">
+        <main className="app-main ml-64 flex-1 p-6">
+          <DataImportBanner statusInfo={statusInfo} isChecking={isChecking} />
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/map" element={<MapPage />} />

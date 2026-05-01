@@ -46,6 +46,7 @@ class CrimeFilter(BaseModel):
     hour_from: Optional[int] = None
     hour_to: Optional[int] = None
     is_weekend: Optional[bool] = None
+    is_night: Optional[bool] = None
 
 
 class PaginationParams(BaseModel):

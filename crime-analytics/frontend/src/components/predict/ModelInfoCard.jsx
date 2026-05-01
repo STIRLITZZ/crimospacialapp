@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchModelInfo, trainModelFromCSV } from "../../services/api";
 import FeatureImportanceChart from "./FeatureImportanceChart";
+import { translateModelType } from "../../lib/translations";
 
 export default function ModelInfoCard() {
   const [info, setInfo] = useState(null);
@@ -32,7 +33,7 @@ export default function ModelInfoCard() {
   const handleTrain = async () => {
     const file = fileRef.current?.files?.[0];
     if (!file) {
-      setTrainError("Select a CSV file first.");
+      setTrainError("Selecteaza mai intai un fisier CSV.");
       return;
     }
     setTraining(true);
@@ -44,7 +45,7 @@ export default function ModelInfoCard() {
       load(); // reload model info
     } catch (err) {
       setTrainError(
-        err.response?.data?.detail || "Training failed. Check your CSV format."
+        err.response?.data?.detail || "Antrenarea a esuat. Verifica formatul CSV."
       );
     } finally {
       setTraining(false);
@@ -54,10 +55,10 @@ export default function ModelInfoCard() {
   // ── Training section (always visible) ──────────────
   const trainSection = (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-4">
-      <h3 className="text-white font-semibold">Train Model from CSV</h3>
+      <h3 className="text-white font-semibold">Antreneaza modelul din CSV</h3>
 
       <p className="text-gray-400 text-xs leading-relaxed">
-        Upload your CSV with columns:{" "}
+        Incarca CSV-ul cu coloanele:{" "}
         <span className="text-gray-300">
           Hour, AREA, Rpt Dist No, Crm Cd, Vict Age, Vict Sex, Vict Descent,
           Premis Cd, Weapon Used Cd, LAT, LON, Year, Month, Day
@@ -81,10 +82,10 @@ export default function ModelInfoCard() {
         {training ? (
           <span className="flex items-center justify-center gap-2">
             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Training...
+            Se antreneaza...
           </span>
         ) : (
-          "Upload & Train Model"
+          "Incarca si antreneaza modelul"
         )}
       </button>
 
@@ -97,7 +98,7 @@ export default function ModelInfoCard() {
       {trainResult && (
         <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 space-y-2">
           <p className="text-green-400 text-sm font-medium">
-            Training complete!
+            Antrenarea s-a incheiat!
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
@@ -105,17 +106,17 @@ export default function ModelInfoCard() {
               <span className="text-gray-200">Random Forest</span>
             </div>
             <div>
-              <span className="text-gray-500">Accuracy:</span>{" "}
+              <span className="text-gray-500">Acuratete:</span>{" "}
               <span className="text-green-300">
                 {(trainResult.accuracy * 100).toFixed(1)}%
               </span>
             </div>
             <div>
-              <span className="text-gray-500">Rows Used:</span>{" "}
+              <span className="text-gray-500">Randuri folosite:</span>{" "}
               <span className="text-gray-200">{trainResult.rows_used}</span>
             </div>
             <div>
-              <span className="text-gray-500">Crime Types:</span>{" "}
+              <span className="text-gray-500">Tipuri de infractiuni:</span>{" "}
               <span className="text-gray-200">
                 {trainResult.crime_types_count}
               </span>
@@ -148,16 +149,16 @@ export default function ModelInfoCard() {
       <div className="space-y-6">
         {trainSection}
         <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-          <h3 className="text-white font-semibold mb-3">Model Performance</h3>
+          <h3 className="text-white font-semibold mb-3">Performanta modelului</h3>
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 text-center">
             <p className="text-yellow-400 text-sm mb-3">
-              No trained model found. Upload a CSV above to train.
+              Nu exista un model antrenat. Incarca un CSV mai sus pentru antrenare.
             </p>
             <button
               onClick={load}
               className="px-4 py-1.5 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 text-sm rounded-lg transition-colors"
             >
-              Retry
+              Reincearca
             </button>
           </div>
         </div>
@@ -178,19 +179,19 @@ export default function ModelInfoCard() {
       {trainSection}
 
       <div className="bg-white/5 border border-white/10 rounded-xl p-5 space-y-5">
-        <h3 className="text-white font-semibold">Model Performance</h3>
+        <h3 className="text-white font-semibold">Performanta modelului</h3>
 
         {/* Info cards grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white/5 rounded-lg p-3">
-            <p className="text-gray-500 text-xs uppercase mb-1">Model Type</p>
+            <p className="text-gray-500 text-xs uppercase mb-1">Tip model</p>
             <p className="text-white font-medium text-sm">
-              {info.model_type || "Unknown"}
+              {translateModelType(info.model_type || "unknown")}
             </p>
           </div>
           <div className="bg-white/5 rounded-lg p-3">
             <p className="text-gray-500 text-xs uppercase mb-1">
-              Training Date
+              Data antrenarii
             </p>
             <p className="text-white font-medium text-sm">
               {info.trained_date
@@ -200,12 +201,12 @@ export default function ModelInfoCard() {
           </div>
           <div className="bg-white/5 rounded-lg p-3">
             <p className="text-gray-500 text-xs uppercase mb-1">
-              Crime Types
+              Tipuri de infractiuni
             </p>
             <p className="text-white font-medium text-sm">{numClasses}</p>
           </div>
           <div className="bg-white/5 rounded-lg p-3">
-            <p className="text-gray-500 text-xs uppercase mb-1">Target</p>
+            <p className="text-gray-500 text-xs uppercase mb-1">Tinta</p>
             <p className="text-white font-medium text-sm">
               {info.target_column || "Crm Cd"}
             </p>
@@ -215,7 +216,7 @@ export default function ModelInfoCard() {
         {/* Accuracy gauge */}
         <div className="flex flex-col items-center">
           <p className="text-gray-400 text-xs uppercase mb-3">
-            Overall Accuracy
+            Acuratete generala
           </p>
           <div className="relative w-48 h-24 overflow-hidden">
             <div

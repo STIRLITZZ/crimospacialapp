@@ -50,10 +50,12 @@ services:
       - "8003:8003"
     environment:
       DATA_SERVICE_URL: http://data-service:8001
+      CRIME_MODELS_DIR: /app/crime/models
     depends_on:
       - data-service
     volumes:
       - ./services/ml-service/models_store:/app/models_store
+      - ./crime/models:/app/crime/models:ro
     networks:
       - crime-net
 

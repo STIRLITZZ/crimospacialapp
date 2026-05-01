@@ -66,26 +66,6 @@ async def health():
     return {"status": "ok"}
 
 
-@app.post("/analytics/descriptive")
-async def descriptive_stats(req: DescriptiveRequest):
-    """Compute descriptive statistics for a single area."""
-    crime_rate = compute_crime_rate(req.incidents_count, req.population)
-    density = compute_density(req.incidents_count, req.area_sq_km)
-
-    trend = compute_trend([p.model_dump() for p in req.time_series])
-
-    seasonality = {}
-    if len(req.monthly_counts) == 12:
-        seasonality = compute_seasonality(req.monthly_counts)
-
-    return {
-        "area_name": req.area_name,
-        "crime_rate": round(crime_rate, 2),
-        "density": round(density, 2),
-        "trend": trend,
-        "seasonality": seasonality,
-    }
-
 
 @app.post("/analytics/risk-scores")
 async def risk_scores(req: RiskScoresRequest):

@@ -36,6 +36,11 @@ export const fetchStatsByCrimeType = (filters = {}, limit = 20) =>
 export const fetchAreaTimeMatrix = (area_name, crm_cd_desc) =>
   api.get("/data/stats/area-time-matrix", { params: { area_name, crm_cd_desc } }).then((r) => r.data);
 
+// ETL service
+
+export const fetchEtlStatus = () =>
+  api.get("/etl/status").then((r) => r.data);
+
 // ── Map service ────────────────────────────────────────
 
 export const fetchHeatmapData = (filters = {}) =>
@@ -54,6 +59,15 @@ export const fetchIncidentPoints = (params = {}) =>
 
 export const fetchPrediction = (input) =>
   api.post("/ml/predict", input).then((r) => r.data);
+
+export const fetchHotspotModels = () =>
+  api.get("/ml/hotspot-models").then((r) => r.data);
+
+export const predictHotspots = (input) =>
+  api.post("/ml/predict-hotspots", input).then((r) => r.data);
+
+export const fetchHotspotModelInfo = (crimeCode) =>
+  api.get(`/ml/hotspot-model-info/${crimeCode}`).then((r) => r.data);
 
 export const fetchModelInfo = () =>
   api.get("/ml/model-info").then((r) => r.data);

@@ -7,8 +7,19 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { translateCrimeType } from "../lib/translations";
 
-const BAR_COLOR = "#3b82f6";
+const BAR_COLOR = "var(--chart-primary)";
+const X_TICK = { fill: "var(--chart-axis)", fontSize: 11 };
+const Y_TICK = { fill: "var(--text-soft)", fontSize: 11 };
+const TOOLTIP_STYLE = {
+  backgroundColor: "var(--tooltip-bg)",
+  border: "1px solid var(--tooltip-border)",
+  borderRadius: 12,
+  color: "var(--text-strong)",
+  fontSize: 12,
+  boxShadow: "0 18px 40px rgba(var(--shadow-rgb), 0.16)",
+};
 
 export default function TopCrimesChart({ data, loading }) {
   if (loading) {
@@ -25,34 +36,31 @@ export default function TopCrimesChart({ data, loading }) {
   }
 
   const chartData = (data || []).slice(0, 10).map((d) => ({
-    name: d.crm_cd_desc?.length > 22 ? d.crm_cd_desc.slice(0, 20) + "..." : d.crm_cd_desc,
+    name:
+      translateCrimeType(d.crm_cd_desc)?.length > 22
+        ? translateCrimeType(d.crm_cd_desc).slice(0, 20) + "..."
+        : translateCrimeType(d.crm_cd_desc),
     count: d.count,
-    full: d.crm_cd_desc,
+    full: translateCrimeType(d.crm_cd_desc),
   }));
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5 h-[380px]">
-      <h3 className="text-white font-semibold mb-3">Top Crime Types</h3>
+      <h3 className="text-white font-semibold mb-3">Top tipuri de infractiuni</h3>
       {chartData.length === 0 ? (
-        <p className="text-gray-500 text-sm">No data available.</p>
+        <p className="text-gray-500 text-sm">Nu exista date disponibile.</p>
       ) : (
         <ResponsiveContainer width="100%" height={310}>
           <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
-            <XAxis type="number" tick={{ fill: "#9ca3af", fontSize: 11 }} />
+            <XAxis type="number" tick={X_TICK} />
             <YAxis
               dataKey="name"
               type="category"
               width={130}
-              tick={{ fill: "#d1d5db", fontSize: 11 }}
+              tick={Y_TICK}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: "#1a1a2e",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 8,
-                color: "#fff",
-                fontSize: 12,
-              }}
+              contentStyle={TOOLTIP_STYLE}
               formatter={(value, name, props) => [
                 value.toLocaleString(),
                 props.payload.full,

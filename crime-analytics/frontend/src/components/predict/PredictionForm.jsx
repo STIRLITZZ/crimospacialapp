@@ -1,19 +1,32 @@
 import { useState, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { useTheme } from "../../context/ThemeContext";
 
-const LA_CENTER = [34.05, -118.25];
-
-// LAPD area codes mapped to names
 const AREA_MAP = {
-  1: "Central", 2: "Rampart", 3: "Southwest", 4: "Hollenbeck",
-  5: "Harbor", 6: "Hollywood", 7: "Wilshire", 8: "West LA",
-  9: "Van Nuys", 10: "West Valley", 11: "Northeast", 12: "77th Street",
-  13: "Newton", 14: "Pacific", 15: "N Hollywood", 16: "Foothill",
-  17: "Devonshire", 18: "Southeast", 19: "Mission", 20: "Olympic",
+  1: "Central",
+  2: "Rampart",
+  3: "Southwest",
+  4: "Hollenbeck",
+  5: "Harbor",
+  6: "Hollywood",
+  7: "Wilshire",
+  8: "West LA",
+  9: "Van Nuys",
+  10: "West Valley",
+  11: "Northeast",
+  12: "77th Street",
+  13: "Newton",
+  14: "Pacific",
+  15: "N Hollywood",
+  16: "Foothill",
+  17: "Devonshire",
+  18: "Southeast",
+  19: "Mission",
+  20: "Olympic",
   21: "Topanga",
 };
 
-function LocationPicker({ lat, lon, onLocationChange }) {
+function LocationPicker({ lat, lon, onLocationChange, tileUrl }) {
   function MapClickHandler() {
     useMapEvents({
       click(e) {
@@ -34,10 +47,7 @@ function LocationPicker({ lat, lon, onLocationChange }) {
         className="h-full w-full"
         scrollWheelZoom={true}
       >
-        <TileLayer
-          attribution='&copy; OSM'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        />
+        <TileLayer attribution="&copy; OSM" url={tileUrl} />
         <Marker position={[lat, lon]} />
         <MapClickHandler />
       </MapContainer>
@@ -46,7 +56,11 @@ function LocationPicker({ lat, lon, onLocationChange }) {
 }
 
 export default function PredictionForm({ onPredict, loading }) {
+  const { isDark } = useTheme();
   const now = new Date();
+  const tileUrl = isDark
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
   const [form, setForm] = useState({
     year: now.getFullYear(),
@@ -59,17 +73,15 @@ export default function PredictionForm({ onPredict, loading }) {
     lat: 34.05,
     lon: -118.25,
     quarter: Math.ceil((now.getMonth() + 1) / 3),
-    // Extended CSV features
     rpt_dist_no: 100,
     vict_descent: 0,
     premis_cd: 101,
     weapon_used_cd: 400,
   });
 
-  // Auto-calculate IsWeekend and IsNight
   const computed = useMemo(() => {
-    const d = new Date(form.year, form.month - 1, form.day);
-    const dayOfWeek = d.getDay();
+    const date = new Date(form.year, form.month - 1, form.day);
+    const dayOfWeek = date.getDay();
     return {
       is_weekend: dayOfWeek === 0 || dayOfWeek === 6,
       is_night: form.hour >= 20 || form.hour < 6,
@@ -92,17 +104,17 @@ export default function PredictionForm({ onPredict, loading }) {
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-      <h3 className="text-white font-semibold mb-4">Individual Prediction</h3>
+      <h3 className="text-white font-semibold mb-4">Predictie individuala</h3>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Location mini-map */}
         <div>
           <label className="text-gray-400 text-xs uppercase tracking-wider block mb-1">
-            Location (click map to set)
+            Locatie (apasa pe harta pentru setare)
           </label>
           <LocationPicker
             lat={form.lat}
             lon={form.lon}
+            tileUrl={tileUrl}
             onLocationChange={(lat, lon) => {
               update("lat", lat);
               update("lon", lon);
@@ -132,11 +144,10 @@ export default function PredictionForm({ onPredict, loading }) {
           </div>
         </div>
 
-        {/* LAPD Area + Rpt Dist No */}
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              LAPD Area
+              Zona LAPD
             </span>
             <select
               value={form.area}
@@ -145,7 +156,7 @@ export default function PredictionForm({ onPredict, loading }) {
             >
               {Object.entries(AREA_MAP).map(([code, name]) => (
                 <option key={code} value={code}>
-                  {code} — {name}
+                  {code} - {name}
                 </option>
               ))}
             </select>
@@ -158,19 +169,16 @@ export default function PredictionForm({ onPredict, loading }) {
               type="number"
               min={0}
               value={form.rpt_dist_no}
-              onChange={(e) =>
-                update("rpt_dist_no", parseInt(e.target.value, 10) || 0)
-              }
+              onChange={(e) => update("rpt_dist_no", parseInt(e.target.value, 10) || 0)}
               className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             />
           </label>
         </div>
 
-        {/* Date & Time */}
         <div className="grid grid-cols-3 gap-3">
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Year
+              An
             </span>
             <input
               type="number"
@@ -183,7 +191,7 @@ export default function PredictionForm({ onPredict, loading }) {
           </label>
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Month
+              Luna
             </span>
             <select
               value={form.month}
@@ -199,7 +207,7 @@ export default function PredictionForm({ onPredict, loading }) {
           </label>
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Day
+              Zi
             </span>
             <input
               type="number"
@@ -212,10 +220,9 @@ export default function PredictionForm({ onPredict, loading }) {
           </label>
         </div>
 
-        {/* Hour slider */}
         <label className="block">
           <span className="text-gray-400 text-xs uppercase tracking-wider">
-            Hour: {form.hour}:00
+            Ora: {form.hour}:00
           </span>
           <input
             type="range"
@@ -234,72 +241,62 @@ export default function PredictionForm({ onPredict, loading }) {
           </div>
         </label>
 
-        {/* Victim info */}
         <div className="grid grid-cols-3 gap-3">
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Victim Age
+              Varsta victima
             </span>
             <input
               type="number"
               min={0}
               max={120}
               value={form.vict_age}
-              onChange={(e) =>
-                update("vict_age", parseInt(e.target.value, 10) || 0)
-              }
+              onChange={(e) => update("vict_age", parseInt(e.target.value, 10) || 0)}
               className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             />
           </label>
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Vict Sex (code)
+              Sex victima (cod)
             </span>
             <input
               type="number"
               min={0}
               value={form.vict_sex}
-              onChange={(e) =>
-                update("vict_sex", parseInt(e.target.value, 10) || 0)
-              }
+              onChange={(e) => update("vict_sex", parseInt(e.target.value, 10) || 0)}
               className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             />
           </label>
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Vict Descent
+              Origine victima
             </span>
             <input
               type="number"
               min={0}
               value={form.vict_descent}
-              onChange={(e) =>
-                update("vict_descent", parseInt(e.target.value, 10) || 0)
-              }
+              onChange={(e) => update("vict_descent", parseInt(e.target.value, 10) || 0)}
               className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             />
           </label>
         </div>
 
-        {/* Premise & Weapon codes */}
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Premis Cd
+              Cod locatie
             </span>
             <input
               type="number"
               min={0}
               value={form.premis_cd}
-              onChange={(e) =>
-                update("premis_cd", parseInt(e.target.value, 10) || 0)
-              }
+              onChange={(e) => update("premis_cd", parseInt(e.target.value, 10) || 0)}
               className="mt-1 w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
             />
           </label>
           <label className="block">
             <span className="text-gray-400 text-xs uppercase tracking-wider">
-              Weapon Used Cd
+              Cod arma folosita
             </span>
             <input
               type="number"
@@ -313,7 +310,6 @@ export default function PredictionForm({ onPredict, loading }) {
           </label>
         </div>
 
-        {/* Auto-calculated badges */}
         <div className="flex gap-3">
           <span
             className={`text-xs px-2 py-1 rounded-full ${
@@ -322,7 +318,7 @@ export default function PredictionForm({ onPredict, loading }) {
                 : "bg-white/5 text-gray-500"
             }`}
           >
-            {computed.is_weekend ? "Weekend" : "Weekday"}
+            {computed.is_weekend ? "Weekend" : "Zi lucratoare"}
           </span>
           <span
             className={`text-xs px-2 py-1 rounded-full ${
@@ -331,14 +327,13 @@ export default function PredictionForm({ onPredict, loading }) {
                 : "bg-white/5 text-gray-500"
             }`}
           >
-            {computed.is_night ? "Night" : "Daytime"}
+            {computed.is_night ? "Noapte" : "Zi"}
           </span>
           <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-gray-500">
             Q{computed.quarter}
           </span>
         </div>
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
@@ -347,10 +342,10 @@ export default function PredictionForm({ onPredict, loading }) {
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Predicting...
+              Se calculeaza...
             </span>
           ) : (
-            "Predict Crime Type"
+            "Prezice tipul de infractiune"
           )}
         </button>
       </form>

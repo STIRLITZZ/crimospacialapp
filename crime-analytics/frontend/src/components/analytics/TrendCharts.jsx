@@ -1,19 +1,37 @@
 import { useState, useEffect } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, Legend,
-  ResponsiveContainer, CartesianGrid, ReferenceLine,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 import { fetchAreaTimeMatrix } from "../../services/api";
+import { translateTrendDirection } from "../../lib/translations";
 
-const AREA_COLORS = ["#3b82f6", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"];
+const AREA_COLORS = [
+  "var(--chart-primary)",
+  "var(--chart-secondary)",
+  "var(--chart-tertiary)",
+  "var(--chart-danger)",
+  "#8b5cf6",
+];
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "#1a1a2e",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  color: "#fff",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "1px solid var(--tooltip-border)",
+  borderRadius: 12,
+  color: "var(--text-strong)",
   fontSize: 12,
+  boxShadow: "0 18px 40px rgba(var(--shadow-rgb), 0.16)",
 };
+const GRID_STROKE = "var(--grid-stroke)";
+const X_TICK = { fill: "var(--chart-axis)", fontSize: 10 };
+const Y_TICK = { fill: "var(--chart-axis)", fontSize: 11 };
+const LEGEND_STYLE = { fontSize: 12, color: "var(--text-soft)" };
 
 function Card({ title, children, className = "" }) {
   return (
@@ -33,14 +51,21 @@ function Skeleton({ height = 300 }) {
   );
 }
 
-/** Simple linear regression: returns { slope, intercept, r2, points } */
 function linearRegression(data) {
   const n = data.length;
   if (n < 2) return { slope: 0, intercept: 0, r2: 0, points: [] };
 
-  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0, sumYY = 0;
+  let sumX = 0;
+  let sumY = 0;
+  let sumXY = 0;
+  let sumXX = 0;
+  let sumYY = 0;
   data.forEach(({ x, y }) => {
-    sumX += x; sumY += y; sumXY += x * y; sumXX += x * x; sumYY += y * y;
+    sumX += x;
+    sumY += y;
+    sumXY += x * y;
+    sumXX += x * x;
+    sumYY += y * y;
   });
 
   const denom = n * sumXX - sumX * sumX;
@@ -49,20 +74,20 @@ function linearRegression(data) {
   const slope = (n * sumXY - sumX * sumY) / denom;
   const intercept = (sumY - slope * sumX) / n;
 
-  // R²
-  const ssRes = data.reduce((s, { x, y }) => s + (y - (slope * x + intercept)) ** 2, 0);
+  const ssRes = data.reduce(
+    (sum, { x, y }) => sum + (y - (slope * x + intercept)) ** 2,
+    0
+  );
   const meanY = sumY / n;
-  const ssTot = data.reduce((s, { y }) => s + (y - meanY) ** 2, 0);
+  const ssTot = data.reduce((sum, { y }) => sum + (y - meanY) ** 2, 0);
   const r2 = ssTot === 0 ? 1 : 1 - ssRes / ssTot;
 
-  // p-value approximation (t-test for slope ≠ 0)
   let pValue = 1;
   if (n > 2 && ssRes > 0) {
-    const se = Math.sqrt(ssRes / (n - 2) / (sumXX - sumX * sumX / n));
+    const se = Math.sqrt(ssRes / (n - 2) / (sumXX - (sumX * sumX) / n));
     const t = slope / se;
-    // Rough two-tailed p from t with n-2 df (simplified)
     const df = n - 2;
-    pValue = Math.exp(-0.717 * Math.abs(t) - 0.416 * t * t / df);
+    pValue = Math.exp(-0.717 * Math.abs(t) - (0.416 * t * t) / df);
     pValue = Math.min(1, Math.max(0, pValue * 2));
   }
 
@@ -83,16 +108,22 @@ export default function TrendCharts({
   const [areaTrends, setAreaTrends] = useState({});
   const [trendLoading, setTrendLoading] = useState(false);
 
-  // Toggle area selection (max 5)
   const toggleArea = (area) => {
     setSelectedAreas((prev) =>
-      prev.includes(area) ? prev.filter((a) => a !== area) : prev.length < 5 ? [...prev, area] : prev
+      prev.includes(area)
+        ? prev.filter((item) => item !== area)
+        : prev.length < 5
+        ? [...prev, area]
+        : prev
     );
   };
 
-  // Fetch area-specific trends
   useEffect(() => {
-    if (selectedAreas.length === 0) { setAreaTrends({}); return; }
+    if (selectedAreas.length === 0) {
+      setAreaTrends({});
+      return;
+    }
+
     setTrendLoading(true);
     Promise.all(
       selectedAreas.map((area) =>
@@ -104,8 +135,9 @@ export default function TrendCharts({
       .then((results) => {
         const trends = {};
         results.forEach(({ area, data }) => {
-          // Build chronological sequence
-          const sorted = [...data].sort((a, b) => a.year * 12 + a.month - (b.year * 12 + b.month));
+          const sorted = [...data].sort(
+            (a, b) => a.year * 12 + a.month - (b.year * 12 + b.month)
+          );
           const byPeriod = {};
           sorted.forEach(({ year, month, count }) => {
             const key = `${year}-${String(month).padStart(2, "0")}`;
@@ -121,13 +153,13 @@ export default function TrendCharts({
   if (loading) {
     return (
       <div className="grid grid-cols-1 gap-6">
-        <Skeleton height={350} /><Skeleton height={200} /><Skeleton height={350} />
+        <Skeleton height={350} />
+        <Skeleton height={200} />
+        <Skeleton height={350} />
       </div>
     );
   }
 
-  // ── Main trend with regression ─────────────────────────
-  // Build chronological monthly sequence
   const sortedMonthly = [...(monthlyData || [])].sort(
     (a, b) => a.year * 12 + a.month - (b.year * 12 + b.month)
   );
@@ -137,95 +169,109 @@ export default function TrendCharts({
     monthly[key] = (monthly[key] || 0) + count;
   });
   const periods = Object.keys(monthly).sort();
-  const regData = periods.map((p, i) => ({ x: i, y: monthly[p], period: p }));
+  const regData = periods.map((period, i) => ({
+    x: i,
+    y: monthly[period],
+    period,
+  }));
   const reg = linearRegression(regData);
 
-  const trendChart = periods.map((p, i) => ({
-    period: p,
-    count: monthly[p],
+  const trendChart = periods.map((period, i) => ({
+    period,
+    count: monthly[period],
     trend: reg.points[i]?.trend ?? 0,
   }));
 
-  const direction = reg.slope > 0.5 ? "Increasing" : reg.slope < -0.5 ? "Decreasing" : "Stable";
-  const dirColor = reg.slope > 0.5 ? "text-red-400" : reg.slope < -0.5 ? "text-green-400" : "text-gray-400";
+  const direction =
+    reg.slope > 0.5 ? "Increasing" : reg.slope < -0.5 ? "Decreasing" : "Stable";
+  const dirColor =
+    reg.slope > 0.5
+      ? "text-red-400"
+      : reg.slope < -0.5
+      ? "text-green-400"
+      : "text-gray-400";
 
-  // ── Multi-area trend comparison ────────────────────────
   const allPeriods = new Set();
-  Object.values(areaTrends).forEach((t) => Object.keys(t).forEach((p) => allPeriods.add(p)));
+  Object.values(areaTrends).forEach((trend) => {
+    Object.keys(trend).forEach((period) => allPeriods.add(period));
+  });
   const sortedPeriods = [...allPeriods].sort();
 
-  const multiChart = sortedPeriods.map((p) => {
-    const row = { period: p };
+  const multiChart = sortedPeriods.map((period) => {
+    const row = { period };
     selectedAreas.forEach((area) => {
-      row[area] = areaTrends[area]?.[p] || 0;
+      row[area] = areaTrends[area]?.[period] || 0;
     });
     return row;
   });
 
   return (
     <div className="space-y-6">
-      {/* Main trend with regression line */}
-      <Card title="Overall Crime Trend with Regression">
+      <Card title="Tendinta generala a infractiunilor cu regresie">
         {trendChart.length === 0 ? (
-          <p className="text-gray-500 text-sm">No time series data available.</p>
+          <p className="text-gray-500 text-sm">Nu exista date temporale disponibile.</p>
         ) : (
           <ResponsiveContainer width="100%" height={350}>
             <LineChart data={trendChart} margin={{ left: 0, right: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
               <XAxis
                 dataKey="period"
-                tick={{ fill: "#9ca3af", fontSize: 10 }}
+                tick={X_TICK}
                 interval={Math.max(0, Math.floor(trendChart.length / 12) - 1)}
               />
-              <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} />
+              <YAxis tick={Y_TICK} />
               <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ fontSize: 12, color: "#d1d5db" }} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
               <Line
                 type="monotone"
                 dataKey="count"
-                stroke="#3b82f6"
+                stroke="var(--chart-primary)"
                 strokeWidth={2}
                 dot={false}
-                name="Actual"
+                name="Valoare reala"
               />
               <Line
                 type="monotone"
                 dataKey="trend"
-                stroke="#ef4444"
+                stroke="var(--chart-danger)"
                 strokeWidth={2}
                 strokeDasharray="8 4"
                 dot={false}
-                name="Trend Line"
+                name="Linie de trend"
               />
             </LineChart>
           </ResponsiveContainer>
         )}
       </Card>
 
-      {/* Trend Indicators */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-          <p className="text-gray-400 text-xs uppercase mb-1">Direction</p>
-          <p className={`text-lg font-bold ${dirColor}`}>{direction}</p>
+          <p className="text-gray-400 text-xs uppercase mb-1">Directie</p>
+          <p className={`text-lg font-bold ${dirColor}`}>
+            {translateTrendDirection(direction)}
+          </p>
         </div>
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-          <p className="text-gray-400 text-xs uppercase mb-1">Slope</p>
+          <p className="text-gray-400 text-xs uppercase mb-1">Panta</p>
           <p className="text-lg font-bold text-white font-mono">{reg.slope.toFixed(2)}</p>
         </div>
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-          <p className="text-gray-400 text-xs uppercase mb-1">R²</p>
+          <p className="text-gray-400 text-xs uppercase mb-1">R2</p>
           <p className="text-lg font-bold text-white font-mono">{reg.r2.toFixed(4)}</p>
         </div>
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-          <p className="text-gray-400 text-xs uppercase mb-1">p-value</p>
+          <p className="text-gray-400 text-xs uppercase mb-1">Valoare p</p>
           <p className="text-lg font-bold text-white font-mono">
-            {reg.pValue != null ? (reg.pValue < 0.001 ? "<0.001" : reg.pValue.toFixed(4)) : "N/A"}
+            {reg.pValue != null
+              ? reg.pValue < 0.001
+                ? "<0.001"
+                : reg.pValue.toFixed(4)
+              : "N/A"}
           </p>
         </div>
       </div>
 
-      {/* Multi-area trend comparison */}
-      <Card title="Trend Comparison by Area">
+      <Card title="Comparatie de trend pe zone">
         <div className="flex flex-wrap gap-2 mb-4">
           {(areas || []).slice(0, 21).map((area) => (
             <button
@@ -242,7 +288,7 @@ export default function TrendCharts({
           ))}
         </div>
         <p className="text-gray-500 text-xs mb-3">
-          Select up to 5 areas to compare. {selectedAreas.length}/5 selected.
+          Selecteaza pana la 5 zone pentru comparatie. {selectedAreas.length}/5 selectate.
         </p>
 
         {trendLoading && (
@@ -252,15 +298,15 @@ export default function TrendCharts({
         {!trendLoading && multiChart.length > 0 && (
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={multiChart} margin={{ left: 0, right: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
               <XAxis
                 dataKey="period"
-                tick={{ fill: "#9ca3af", fontSize: 10 }}
+                tick={X_TICK}
                 interval={Math.max(0, Math.floor(multiChart.length / 12) - 1)}
               />
-              <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} />
+              <YAxis tick={Y_TICK} />
               <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ fontSize: 12, color: "#d1d5db" }} />
+              <Legend wrapperStyle={LEGEND_STYLE} />
               {selectedAreas.map((area, i) => (
                 <Line
                   key={area}
@@ -277,7 +323,7 @@ export default function TrendCharts({
 
         {!trendLoading && selectedAreas.length === 0 && (
           <p className="text-gray-500 text-sm text-center py-8">
-            Select areas above to compare their trends.
+            Selecteaza zonele de mai sus pentru a compara tendintele lor.
           </p>
         )}
       </Card>

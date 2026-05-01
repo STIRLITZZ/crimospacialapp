@@ -3,15 +3,16 @@ import {
 } from "recharts";
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "#1a1a2e",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  color: "#fff",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "1px solid var(--tooltip-border)",
+  borderRadius: 12,
+  color: "var(--text-strong)",
   fontSize: 12,
+  boxShadow: "0 18px 40px rgba(var(--shadow-rgb), 0.16)",
 };
 
 const COLORS = [
-  "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe",
+  "var(--chart-primary)", "var(--chart-secondary)", "#93c5fd", "#bfdbfe",
   "#a5b4fc", "#818cf8", "#6366f1", "#c4b5fd",
   "#d8b4fe", "#e9d5ff", "#f0abfc", "#f5d0fe",
 ];
@@ -27,7 +28,7 @@ export default function FeatureImportanceChart({ importances, loading }) {
   }
 
   if (!importances || importances.length === 0) {
-    return <p className="text-gray-500 text-sm">No feature importance data.</p>;
+    return <p className="text-gray-500 text-sm">Nu exista date despre importanta variabilelor.</p>;
   }
 
   const data = importances
@@ -41,7 +42,7 @@ export default function FeatureImportanceChart({ importances, loading }) {
   return (
     <div>
       <p className="text-gray-400 text-xs uppercase mb-3">
-        Feature Importances
+        Importanta variabilelor
       </p>
       <ResponsiveContainer width="100%" height={data.length * 32 + 20}>
         <BarChart
@@ -51,7 +52,7 @@ export default function FeatureImportanceChart({ importances, loading }) {
         >
           <XAxis
             type="number"
-            tick={{ fill: "#9ca3af", fontSize: 10 }}
+            tick={{ fill: "var(--chart-axis)", fontSize: 10 }}
             domain={[0, "auto"]}
             unit="%"
           />
@@ -59,11 +60,11 @@ export default function FeatureImportanceChart({ importances, loading }) {
             dataKey="name"
             type="category"
             width={90}
-            tick={{ fill: "#d1d5db", fontSize: 11 }}
+            tick={{ fill: "var(--text-soft)", fontSize: 11 }}
           />
           <Tooltip
             contentStyle={TOOLTIP_STYLE}
-            formatter={(val) => [`${val}%`, "Importance"]}
+            formatter={(val) => [`${val}%`, "Importanta"]}
           />
           <Bar dataKey="importance" radius={[0, 4, 4, 0]}>
             {data.map((_, i) => (

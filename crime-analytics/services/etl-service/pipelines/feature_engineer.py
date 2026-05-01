@@ -1,21 +1,23 @@
 import pandas as pd
 
 
-def add_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Add derived analytical features to the cleaned crime DataFrame."""
+def _numeric_bin(series: pd.Series, bins: int = 10) -> pd.Series:
+    if series.nunique(dropna=True) <= 1:
+        return pd.Series(0, index=series.index, dtype="int64")
 
-    # 1. Spatial binning — divide LAT and LON into 10 intervals
-    df["LatBin"] = pd.cut(df["LAT"], bins=10).astype(str)
-    df["LonBin"] = pd.cut(df["LON"], bins=10).astype(str)
-
-    # 2. Group rare crime descriptions (< 25 occurrences) into "OTHER"
-    counts = df["Crm Cd Desc"].value_counts()
-    rare = counts[counts < 25].index
-    df["Crm Cd Desc"] = df["Crm Cd Desc"].where(
-        ~df["Crm Cd Desc"].isin(rare), "OTHER"
+    bucketed = pd.cut(
+        series,
+        bins=bins,
+        labels=False,
+        include_lowest=True,
+        duplicates="drop",
     )
+    return bucketed.fillna(0).astype(int)
 
-    # 3. Part classification: Part 1 (serious, code < 900), Part 2 (less serious)
-    df["Part"] = df["Crm Cd"].apply(lambda c: 1 if c < 900 else 2)
 
-    return df
+def add_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add derived fields used by the shared analytics schema."""
+    result = df.copy()
+    result["lat_bin"] = _numeric_bin(result["lat"])
+    result["lon_bin"] = _numeric_bin(result["lon"])
+    return result

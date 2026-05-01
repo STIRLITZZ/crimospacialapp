@@ -1,22 +1,49 @@
 import {
-  PieChart, Pie, Cell,
-  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { translateCrimeType } from "../../lib/translations";
 
 const COLORS = [
-  "#3b82f6","#f59e0b","#10b981","#ef4444","#8b5cf6",
-  "#ec4899","#06b6d4","#f97316","#14b8a6","#a855f7",
-  "#6366f1","#e11d48","#0ea5e9","#84cc16","#d946ef",
+  "var(--chart-primary)",
+  "var(--chart-secondary)",
+  "var(--chart-tertiary)",
+  "var(--chart-danger)",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#f97316",
+  "#14b8a6",
+  "#a855f7",
+  "#6366f1",
+  "#e11d48",
+  "#0ea5e9",
+  "#84cc16",
+  "#d946ef",
 ];
 
 const TOOLTIP_STYLE = {
-  backgroundColor: "#1a1a2e",
-  border: "1px solid rgba(255,255,255,0.1)",
-  borderRadius: 8,
-  color: "#fff",
+  backgroundColor: "var(--tooltip-bg)",
+  border: "1px solid var(--tooltip-border)",
+  borderRadius: 12,
+  color: "var(--text-strong)",
   fontSize: 12,
+  boxShadow: "0 18px 40px rgba(var(--shadow-rgb), 0.16)",
 };
+const GRID_STROKE = "var(--grid-stroke)";
+const X_TICK = { fill: "var(--chart-axis)", fontSize: 11 };
+const X_TICK_SMALL = { fill: "var(--chart-axis)", fontSize: 10 };
+const Y_TICK_SMALL = { fill: "var(--text-soft)", fontSize: 10 };
+const LEGEND_STYLE = { fontSize: 10, color: "var(--text-soft)" };
 
 function Card({ title, children, className = "" }) {
   return (
@@ -44,51 +71,62 @@ export default function CrimeTypeCharts({
   if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Skeleton /><Skeleton /><Skeleton />
+        <Skeleton />
+        <Skeleton />
+        <Skeleton />
       </div>
     );
   }
 
   const allTypes = crimeTypes || [];
-
-  // ── Donut chart: top 10 + "Other" ─────────────────────
   const top10 = allTypes.slice(0, 10);
-  const otherCount = allTypes.slice(10).reduce((s, c) => s + c.count, 0);
+  const otherCount = allTypes.slice(10).reduce((sum, item) => sum + item.count, 0);
   const donutData = [
-    ...top10.map((c) => ({ name: c.crm_cd_desc, value: c.count })),
-    ...(otherCount > 0 ? [{ name: "Other", value: otherCount }] : []),
+    ...top10.map((item) => ({
+      name: translateCrimeType(item.crm_cd_desc),
+      value: item.count,
+    })),
+    ...(otherCount > 0 ? [{ name: "Altele", value: otherCount }] : []),
   ];
-  const totalCount = donutData.reduce((s, d) => s + d.value, 0);
+  const totalCount = donutData.reduce((sum, item) => sum + item.value, 0);
 
-  // ── Stacked bar: top 5 types across top areas ──────────
-  // We don't have per-area crime type breakdown from a single call,
-  // so we show the top 5 types proportionally against area counts.
-  const topTypes = allTypes.slice(0, 5).map((c) => c.crm_cd_desc);
-  const topAreasForStacked = (areaStats || []).slice(0, 8).map((a) => {
-    const row = { area: a.area_name?.length > 14 ? a.area_name.slice(0, 12) + "..." : a.area_name };
-    // Distribute the area count proportionally across top crime types
-    const totalCrime = allTypes.reduce((s, c) => s + c.count, 0) || 1;
-    topTypes.forEach((t) => {
-      const typeEntry = allTypes.find((c) => c.crm_cd_desc === t);
+  const topTypes = allTypes
+    .slice(0, 5)
+    .map((item) => translateCrimeType(item.crm_cd_desc));
+
+  const topAreasForStacked = (areaStats || []).slice(0, 8).map((area) => {
+    const row = {
+      area:
+        area.area_name?.length > 14
+          ? area.area_name.slice(0, 12) + "..."
+          : area.area_name,
+    };
+
+    const totalCrime = allTypes.reduce((sum, item) => sum + item.count, 0) || 1;
+    topTypes.forEach((crimeType) => {
+      const typeEntry = allTypes.find(
+        (item) => translateCrimeType(item.crm_cd_desc) === crimeType
+      );
       const ratio = typeEntry ? typeEntry.count / totalCrime : 0;
-      row[t] = Math.round(a.count * ratio);
+      row[crimeType] = Math.round(area.count * ratio);
     });
     return row;
   });
 
-  // ── Full breakdown bar chart ───────────────────────────
-  const fullBreakdown = allTypes.slice(0, 25).map((c) => ({
-    name: c.crm_cd_desc?.length > 28 ? c.crm_cd_desc.slice(0, 26) + "..." : c.crm_cd_desc,
-    count: c.count,
-    full: c.crm_cd_desc,
+  const fullBreakdown = allTypes.slice(0, 25).map((item) => ({
+    name:
+      translateCrimeType(item.crm_cd_desc)?.length > 28
+        ? translateCrimeType(item.crm_cd_desc).slice(0, 26) + "..."
+        : translateCrimeType(item.crm_cd_desc),
+    count: item.count,
+    full: translateCrimeType(item.crm_cd_desc),
   }));
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Donut Chart */}
-      <Card title="Crime Distribution">
+      <Card title="Distributia infractiunilor">
         {donutData.length === 0 ? (
-          <p className="text-gray-500 text-sm">No data available.</p>
+          <p className="text-gray-500 text-sm">Nu exista date disponibile.</p>
         ) : (
           <ResponsiveContainer width="100%" height={340}>
             <PieChart>
@@ -101,9 +139,11 @@ export default function CrimeTypeCharts({
                 paddingAngle={2}
                 dataKey="value"
                 label={({ name, percent }) =>
-                  `${name.length > 15 ? name.slice(0, 13) + "…" : name} ${(percent * 100).toFixed(0)}%`
+                  `${name.length > 15 ? name.slice(0, 13) + "..." : name} ${(
+                    percent * 100
+                  ).toFixed(0)}%`
                 }
-                labelLine={{ stroke: "#6b7280" }}
+                labelLine={{ stroke: "var(--chart-axis)" }}
               >
                 {donutData.map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -111,35 +151,44 @@ export default function CrimeTypeCharts({
               </Pie>
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                formatter={(val) => [val.toLocaleString(), "Incidents"]}
+                formatter={(val) => [val.toLocaleString(), "Incidente"]}
               />
             </PieChart>
           </ResponsiveContainer>
         )}
         <p className="text-gray-500 text-xs text-center mt-1">
-          Total: {totalCount.toLocaleString()} incidents
+          Total: {totalCount.toLocaleString()} incidente
         </p>
       </Card>
 
-      {/* Stacked Bar: Top 5 types across areas */}
-      <Card title="Top Crime Types by Area">
+      <Card title="Top tipuri de infractiuni pe zone">
         {topAreasForStacked.length === 0 ? (
-          <p className="text-gray-500 text-sm">No data available.</p>
+          <p className="text-gray-500 text-sm">Nu exista date disponibile.</p>
         ) : (
           <ResponsiveContainer width="100%" height={340}>
             <BarChart data={topAreasForStacked} margin={{ left: 0, right: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="area" tick={{ fill: "#9ca3af", fontSize: 10 }} angle={-30} textAnchor="end" height={60} />
-              <YAxis tick={{ fill: "#9ca3af", fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+              <XAxis
+                dataKey="area"
+                tick={X_TICK_SMALL}
+                angle={-30}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis tick={X_TICK} />
               <Tooltip contentStyle={TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ fontSize: 10, color: "#d1d5db" }} />
-              {topTypes.map((t, i) => (
+              <Legend wrapperStyle={LEGEND_STYLE} />
+              {topTypes.map((crimeType, i) => (
                 <Bar
-                  key={t}
-                  dataKey={t}
+                  key={crimeType}
+                  dataKey={crimeType}
                   stackId="a"
                   fill={COLORS[i % COLORS.length]}
-                  name={t.length > 20 ? t.slice(0, 18) + "…" : t}
+                  name={
+                    crimeType.length > 20
+                      ? crimeType.slice(0, 18) + "..."
+                      : crimeType
+                  }
                 />
               ))}
             </BarChart>
@@ -147,21 +196,38 @@ export default function CrimeTypeCharts({
         )}
       </Card>
 
-      {/* Full breakdown */}
-      <Card title="All Crime Types Breakdown" className="lg:col-span-2">
+      <Card
+        title="Distribuire completa a tipurilor de infractiuni"
+        className="lg:col-span-2"
+      >
         {fullBreakdown.length === 0 ? (
-          <p className="text-gray-500 text-sm">No data available.</p>
+          <p className="text-gray-500 text-sm">Nu exista date disponibile.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={Math.max(400, fullBreakdown.length * 22)}>
-            <BarChart data={fullBreakdown} layout="vertical" margin={{ left: 10, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis type="number" tick={{ fill: "#9ca3af", fontSize: 11 }} />
-              <YAxis dataKey="name" type="category" width={180} tick={{ fill: "#d1d5db", fontSize: 10 }} />
+          <ResponsiveContainer
+            width="100%"
+            height={Math.max(400, fullBreakdown.length * 22)}
+          >
+            <BarChart
+              data={fullBreakdown}
+              layout="vertical"
+              margin={{ left: 10, right: 20 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
+              <XAxis type="number" tick={X_TICK} />
+              <YAxis
+                dataKey="name"
+                type="category"
+                width={180}
+                tick={Y_TICK_SMALL}
+              />
               <Tooltip
                 contentStyle={TOOLTIP_STYLE}
-                formatter={(val, name, props) => [val.toLocaleString(), props.payload.full]}
+                formatter={(val, name, props) => [
+                  val.toLocaleString(),
+                  props.payload.full,
+                ]}
               />
-              <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="count" fill="var(--chart-secondary)" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}

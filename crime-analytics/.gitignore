@@ -1,0 +1,92 @@
+# ========================
+# Director experiment separat (are propriul .git)
+# ========================
+crime/
+
+# ========================
+# Date brute / datasets
+# ========================
+data/raw/
+data/processed/
+**/*.csv
+**/*.xlsx
+**/*.xls
+**/*.parquet
+**/*.json.gz
+
+# ========================
+# Modele antrenate
+# ========================
+**/*.pkl
+**/*.pickle
+**/*.joblib
+**/*.h5
+**/*.pt
+**/*.pth
+**/*.onnx
+**/*.bin
+**/*.safetensors
+
+# Foldere cu modele
+services/ml-service/models_store/
+services/ml-service/training/
+crime/models/
+crime/data/
+crime/cache/
+
+# ========================
+# Python
+# ========================
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# ========================
+# Logs si rapoarte generate
+# ========================
+*.log
+crime/model_analysis_report.txt
+crime/TRAINING_INFO.txt
+crime/streamlit.log
+
+# ========================
+# Node / Frontend
+# ========================
+node_modules/
+frontend/node_modules/
+dist/
+.next/
+.nuxt/
+
+# ========================
+# Sistem / IDE
+# ========================
+.env
+.env.local
+.env.*.local
+*.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.user
+
+# ========================
+# Docker volumes locale
+# ========================
+postgres_data/
+redis_data/
